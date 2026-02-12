@@ -1,0 +1,65 @@
+# --- Python (Recursive) ---
+# バイトコードキャッシュ
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 仮想環境 (venv, .venv, env など一般的に使われるもの)
+venv/
+.venv/
+env/
+ENV/
+bin/
+lib/
+develop-eggs/
+eggs/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Lint / 型チェック / テスト用キャッシュ
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.pyre/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# --- Next.js / Node.js (Recursive) ---
+node_modules/
+.next/
+out/
+build/
+dist/
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+
+# --- Docker & Databases ---
+# ボリュームマウント用のデータフォルダ
+data/
+pgdata/
+mongo_data/
+redis_data/
+*.log
+
+# --- Environment Variables (Security) ---
+.env
+.env.*
+!.env.example
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Jupyter Notebook ---
+.ipynb_checkpoints

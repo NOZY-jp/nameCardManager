@@ -1,0 +1,20 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+  "fastapi[standard]",
+  "asyncpg",
+  "psycopg2-binary",
+  "sqlalchemy",
+  "pydantic-settings",
+]
+
+[tool.basedpyright]
+venvPath = "."
+venv = ".venv"
+include = ["."]
+exclude = [".venv", "__pycache__"]
+typeCheckingMode = "standard"
