@@ -1,4 +1,7 @@
 .header {
+  position: sticky;
+  top: 0;
+  z-index: $z-sticky;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -16,18 +19,67 @@
   font-weight: $weight-bold;
   color: var(--color-foreground);
   text-decoration: none;
+  flex-shrink: 0;
 }
 
-.nav {
-  display: flex;
+.desktopNav {
+  display: none;
   align-items: center;
-  gap: $space-4;
+  gap: $space-1;
+
+  @media (min-width: $bp-lg) {
+    display: flex;
+  }
+}
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: $space-2 $space-3;
+  font-size: $text-sm;
+  font-weight: $weight-medium;
+  color: var(--color-foreground-muted);
+  text-decoration: none;
+  border-radius: $radius-md;
+  transition: color $transition-fast, background-color $transition-fast;
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--color-foreground);
+    background-color: var(--color-surface-hover);
+  }
+
+  &[data-active="true"] {
+    color: var(--color-foreground);
+    background-color: var(--color-surface-hover);
+  }
+}
+
+.primaryLink {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  font-size: $text-sm;
+  font-weight: $weight-semibold;
+  color: var(--color-accent-foreground);
+  background-color: var(--color-accent);
+  text-decoration: none;
+  border-radius: $radius-md;
+  transition: background-color $transition-fast;
+  white-space: nowrap;
+
+  &:hover {
+    background-color: var(--color-accent-hover);
+  }
 }
 
 .actions {
   display: flex;
   align-items: center;
   gap: $space-2;
+  flex-shrink: 0;
 }
 
 .themeToggle {
@@ -44,4 +96,118 @@
     color: var(--color-foreground);
     background-color: var(--color-surface-hover);
   }
+}
+
+.hamburger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: $radius-md;
+  color: var(--color-foreground);
+  transition: background-color $transition-fast;
+
+  &:hover {
+    background-color: var(--color-surface-hover);
+  }
+
+  @media (min-width: $bp-lg) {
+    display: none;
+  }
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: $z-overlay;
+  background-color: var(--color-overlay);
+  border: none;
+  padding: 0;
+  cursor: default;
+
+  @media (min-width: $bp-lg) {
+    display: none;
+  }
+}
+
+.mobileNav {
+  position: fixed;
+  top: 4rem;
+  right: 0;
+  z-index: $z-modal;
+  width: 280px;
+  max-width: 80vw;
+  height: calc(100dvh - 4rem);
+  background-color: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  transform: translateX(100%);
+  transition: transform $transition-slow;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+
+  &[data-open="true"] {
+    transform: translateX(0);
+  }
+
+  @media (min-width: $bp-lg) {
+    display: none;
+  }
+}
+
+.mobileList {
+  list-style: none;
+  padding: $space-4;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  flex: 1;
+}
+
+.mobileLink {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  font-size: $text-sm;
+  font-weight: $weight-medium;
+  color: var(--color-foreground-muted);
+  text-decoration: none;
+  border-radius: $radius-md;
+  transition: color $transition-fast, background-color $transition-fast;
+
+  &:hover {
+    color: var(--color-foreground);
+    background-color: var(--color-surface-hover);
+  }
+
+  &[data-active="true"] {
+    color: var(--color-foreground);
+    background-color: var(--color-surface-hover);
+  }
+}
+
+.mobilePrimaryLink {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  font-size: $text-sm;
+  font-weight: $weight-semibold;
+  color: var(--color-accent-foreground);
+  background-color: var(--color-accent);
+  text-decoration: none;
+  border-radius: $radius-md;
+  transition: background-color $transition-fast;
+
+  &:hover {
+    background-color: var(--color-accent-hover);
+  }
+}
+
+.mobileFooter {
+  padding: $space-4;
+  border-top: 1px solid var(--color-border);
 }

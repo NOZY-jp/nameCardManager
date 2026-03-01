@@ -1,0 +1,55 @@
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: $space-6;
+}
+
+.header {
+  margin-bottom: $space-6;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+  text-decoration: none;
+  margin-bottom: $space-4;
+  transition: color $transition-fast;
+
+  &:hover {
+    color: var(--color-foreground);
+  }
+}
+
+.title {
+  font-size: $text-2xl;
+  font-weight: $weight-bold;
+  color: var(--color-foreground);
+}
+
+.formContainer {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: $radius-lg;
+  padding: $space-6;
+}
+
+.cancelRow {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: $space-4;
+  border-top: 1px solid var(--color-border);
+  margin-top: $space-4;
+}
+
+@media (max-width: $bp-sm) {
+  .page {
+    padding: $space-4;
+  }
+
+  .formContainer {
+    padding: $space-4;
+  }
+}
