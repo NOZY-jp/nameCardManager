@@ -10,14 +10,14 @@ COPY . .
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
-FROM python:3.12-slim-bookworm AS dev
+FROM python:3.14-slim-bookworm AS dev
 ENV PATH="/app/.venv/bin:$PATH"
 WORKDIR /app
 COPY --from=builder /app /app
-CMD ["fastapi", "dev", "src/main.py", "--host", "0.0.0.0"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
-FROM python:3.12-slim-bookworm AS prod
+FROM python:3.14-slim-bookworm AS prod
 ENV PATH="/app/.venv/bin:$PATH"
 WORKDIR /app
 COPY --from=builder /app /app
-CMD ["fastapi", "run", "src/main.py", "--host", "0.0.0.0"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
