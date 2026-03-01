@@ -11,13 +11,13 @@ concurrency:
 
 jobs:
   # ──────────────────────────────────────────────
-  # Backend: pytest + ruff (Python 3.14 container)
+  # Backend: pytest + ruff (Python 3.13 container)
   # ──────────────────────────────────────────────
   backend:
     runs-on: ubuntu-latest
 
     container:
-      image: python:3.14-rc-slim
+      image: python:3.13-slim
 
     services:
       postgres:
@@ -46,7 +46,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: backend
-        run: uv sync --frozen
+        run: uv sync --frozen --extra dev
 
       - name: Ruff check
         working-directory: backend

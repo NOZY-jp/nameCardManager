@@ -42,5 +42,14 @@
     "msw": "^2.0",
     "typescript": "^5",
     "vitest": "^1.6"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@parcel/watcher",
+      "msw",
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }
