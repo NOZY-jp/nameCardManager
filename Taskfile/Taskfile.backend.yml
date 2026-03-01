@@ -1,0 +1,58 @@
+version: "3"
+
+tasks:
+  install:
+    desc: Python依存関係のインストール (uv)
+    cmds:
+      - uv sync
+
+  dev:
+    desc: FastAPIサーバーの起動
+    cmds:
+      - "uv run fastapi dev app/main.py"
+
+  gen-types:
+    desc: (内部用) サーバーを起動してOpenAPIを公開
+    cmds:
+      - "uv run fastapi dev app/main.py --port 8000"
+
+  migrate:
+    desc: マイグレーションを最新まで適用
+    cmds:
+      - "uv run alembic upgrade head"
+
+  migrate-downgrade:
+    desc: マイグレーションを1つ戻す
+    cmds:
+      - "uv run alembic downgrade -1"
+
+  migrate-create:
+    desc: "新しいマイグレーションを自動生成 (引数: -- -m 'description')"
+    cmds:
+      - "uv run alembic revision --autogenerate {{.CLI_ARGS}}"
+
+  migrate-history:
+    desc: マイグレーション履歴を表示
+    cmds:
+      - uv run alembic history --verbose
+
+  migrate-current:
+    desc: 現在のマイグレーションバージョンを表示
+    cmds:
+      - "uv run alembic current"
+
+  test:
+    desc: pytestでテストを実行
+    cmds:
+      - uv run pytest {{.CLI_ARGS}}
+
+  test:unit:
+    desc: ユニットテストのみ実行
+    cmds:
+      - uv run pytest tests/unit {{.CLI_ARGS}}
+
+  test:integration:
+    desc: 統合テストのみ実行
+    cmds:
+      - uv run pytest tests/integration {{.CLI_ARGS}}
+

@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: "3"
+
+dotenv:
+  - ".env"
+
+vars:
+  COMPOSE_CMD:
+    sh: |
+      if command -v docker compose >/dev/null 2>&1; then echo "docker compose"; elif command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; else echo "docker compose"; fi
+
+includes:
+  frontend:
+    taskfile: ./Taskfile/Taskfile.frontend.yml
+    dir: ./frontend
+
+  backend:
+    taskfile: ./Taskfile/Taskfile.backend.yml
+    dir: ./backend
+
+tasks:
+  default:
+    desc: 利用可能なタスク一覧を表示
+    cmd: task --list
+
+  # ----------------------------------------------------------------
+  # 全体操作コマンド
+  # ----------------------------------------------------------------
+  dev:
+    desc: 🚀 フロントとバックを同時に起動
+    cmd: "task dev:start"
+
+  dev:start:
+    deps:
+      - task: backend:dev
+      - task: frontend:dev
+
+  install:
+    desc: 📦 全体の依存関係をインストール
+    deps:
+      - task: backend:install
+      - task: frontend:install
+
+  # ----------------------------------------------------------------
+  # インフラ関連
+  # ----------------------------------------------------------------
+  up:
+    desc: DBコンテナなどを起動
+    cmd: "{{.COMPOSE_CMD}} up -d"
+
+  down:
+    desc: コンテナを停止
+    cmd: "{{.COMPOSE_CMD}} down"
