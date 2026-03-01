@@ -762,7 +762,7 @@ Wave 3（統合・CI）:
 
 ### Wave 3: CI/CD
 
-- [ ] 15. GitHub Actions CI 設定
+- [x] 15. GitHub Actions CI 設定
 
   **What to do**:
   - `.github/workflows/ci.yml` 作成

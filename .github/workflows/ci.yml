@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Backend: pytest + ruff (Python 3.14 container)
+  # ──────────────────────────────────────────────
+  backend:
+    runs-on: ubuntu-latest
+
+    container:
+      image: python:3.14-rc-slim
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: myapp
+        options: >-
+          --health-cmd "pg_isready -U user -d myapp"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://user:password@postgres:5432/myapp
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        run: |
+          apt-get update -qq && apt-get install -y -qq --no-install-recommends curl ca-certificates > /dev/null
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        working-directory: backend
+        run: uv sync --frozen
+
+      - name: Ruff check
+        working-directory: backend
+        run: uv run ruff check .
+
+      - name: Run tests
+        working-directory: backend
+        run: uv run pytest -v
+
+  # ──────────────────────────────────────────────
+  # Frontend: vitest + biome lint (Node 20+, pnpm)
+  # ──────────────────────────────────────────────
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        working-directory: frontend
+        run: pnpm lint
+
+      - name: Run tests
+        working-directory: frontend
+        run: pnpm test --run
