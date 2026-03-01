@@ -1,17 +1,16 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { namecardCreateSchema, type NamecardCreateFormData } from "@/lib/schemas/namecard";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { NameCard } from "@/lib/api/namecards";
+import {
+  type NamecardCreateFormData,
+  namecardCreateSchema,
+} from "@/lib/schemas/namecard";
 import styles from "./NameCardEditDialog.module.scss";
 
 interface NameCardEditDialogProps {
@@ -61,23 +60,23 @@ export function NameCardEditDialog({
         >
           <div className={styles.fieldRow}>
             <div className={styles.fieldGroup}>
-              <Label htmlFor="edit-last_name" required>姓</Label>
-              <Input
-                id="edit-last_name"
-                {...register("last_name")}
-              />
+              <Label htmlFor="edit-last_name" required>
+                姓
+              </Label>
+              <Input id="edit-last_name" {...register("last_name")} />
               {errors.last_name && (
                 <span className={styles.error}>{errors.last_name.message}</span>
               )}
             </div>
             <div className={styles.fieldGroup}>
-              <Label htmlFor="edit-first_name" required>名</Label>
-              <Input
-                id="edit-first_name"
-                {...register("first_name")}
-              />
+              <Label htmlFor="edit-first_name" required>
+                名
+              </Label>
+              <Input id="edit-first_name" {...register("first_name")} />
               {errors.first_name && (
-                <span className={styles.error}>{errors.first_name.message}</span>
+                <span className={styles.error}>
+                  {errors.first_name.message}
+                </span>
               )}
             </div>
           </div>
@@ -89,7 +88,10 @@ export function NameCardEditDialog({
             </div>
             <div className={styles.fieldGroup}>
               <Label htmlFor="edit-first_name_kana">ふりがな</Label>
-              <Input id="edit-first_name_kana" {...register("first_name_kana")} />
+              <Input
+                id="edit-first_name_kana"
+                {...register("first_name_kana")}
+              />
             </div>
           </div>
 

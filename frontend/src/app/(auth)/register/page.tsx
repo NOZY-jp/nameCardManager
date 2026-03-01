@@ -1,24 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { registerSchema, type RegisterFormData } from "@/lib/schemas/auth";
-import { registerApi } from "@/lib/api/auth";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/useToast";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardContent,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/useToast";
+import { registerApi } from "@/lib/api/auth";
+import { type RegisterFormData, registerSchema } from "@/lib/schemas/auth";
 import styles from "../auth.module.scss";
 
 export default function RegisterPage() {
@@ -66,9 +66,7 @@ export default function RegisterPage() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className={styles.authForm}>
-          {serverError && (
-            <div className={styles.authError}>{serverError}</div>
-          )}
+          {serverError && <div className={styles.authError}>{serverError}</div>}
 
           <div className={styles.fieldGroup}>
             <Label htmlFor="email" required>
@@ -108,8 +106,7 @@ export default function RegisterPage() {
         </form>
 
         <div className={styles.authFooter}>
-          すでにアカウントをお持ちの方は{" "}
-          <Link href="/login">ログイン</Link>
+          すでにアカウントをお持ちの方は <Link href="/login">ログイン</Link>
         </div>
       </CardContent>
     </Card>

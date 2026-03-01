@@ -19,28 +19,19 @@ function getRouterMock() {
 
 function mockPathname(pathname: string) {
   currentPathname = pathname;
-  const { usePathname } = vi.mocked(
-    // biome-ignore lint: dynamic import mock
-    require("next/navigation"),
-  );
+  const { usePathname } = vi.mocked(require("next/navigation"));
   usePathname.mockReturnValue(currentPathname);
 }
 
 function mockSearchParams(params: Record<string, string>) {
   currentSearchParams = new URLSearchParams(params);
-  const { useSearchParams } = vi.mocked(
-    // biome-ignore lint: dynamic import mock
-    require("next/navigation"),
-  );
+  const { useSearchParams } = vi.mocked(require("next/navigation"));
   useSearchParams.mockReturnValue(currentSearchParams);
 }
 
 function mockParams(params: Record<string, string>) {
   currentParams = params;
-  const { useParams } = vi.mocked(
-    // biome-ignore lint: dynamic import mock
-    require("next/navigation"),
-  );
+  const { useParams } = vi.mocked(require("next/navigation"));
   useParams.mockReturnValue(currentParams);
 }
 

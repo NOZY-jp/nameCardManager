@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { CreditCard } from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import type { NameCard } from "@/lib/api/namecards";
 import styles from "./NameCardItem.module.scss";
 
@@ -34,23 +34,16 @@ export function NameCardItem({ card }: NameCardItemProps) {
   ].filter(Boolean);
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: test requires listitem role on interactive element
-    // biome-ignore lint/a11y/noNoninteractiveTabindex: clickable card needs keyboard access
+    // biome-ignore lint/a11y/useSemanticElements: listitem role on interactive element for list semantics
     <div
       className={styles.item}
       role="listitem"
-      tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
       <div className={styles.thumbnail}>
         {imageSrc ? (
-          <Image
-            src={imageSrc}
-            alt={fullName}
-            width={80}
-            height={50}
-          />
+          <Image src={imageSrc} alt={fullName} width={80} height={50} />
         ) : (
           <div
             className={styles.placeholderIcon}

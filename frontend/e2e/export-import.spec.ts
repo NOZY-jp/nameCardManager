@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
+import { expect, test } from "@playwright/test";
 
 /**
  * JSON エクスポート/インポートの E2E テスト
@@ -31,7 +31,7 @@ test.describe("JSON エクスポート/インポート", () => {
     const filePath = await download.path();
     expect(filePath).toBeTruthy();
 
-    const content = fs.readFileSync(filePath!, "utf-8");
+    const content = fs.readFileSync(filePath as string, "utf-8");
     const data = JSON.parse(content);
 
     // 必須キーが含まれる
@@ -53,7 +53,7 @@ test.describe("JSON エクスポート/インポート", () => {
     ]);
 
     const filePath = await download.path();
-    const content = fs.readFileSync(filePath!, "utf-8");
+    const content = fs.readFileSync(filePath as string, "utf-8");
     const data = JSON.parse(content);
 
     // 名刺 5 件、Relationship 3 件、Tag 2 件が含まれる
@@ -81,7 +81,7 @@ test.describe("JSON エクスポート/インポート", () => {
     ]);
 
     const downloadPath = await download.path();
-    const exportedContent = fs.readFileSync(downloadPath!, "utf-8");
+    const exportedContent = fs.readFileSync(downloadPath as string, "utf-8");
 
     // インポート用の一時ファイルを作成
     const tmpDir = path.join(process.cwd(), "test-results");
@@ -146,7 +146,7 @@ test.describe("JSON エクスポート/インポート", () => {
     ]);
 
     const downloadPath = await download.path();
-    const exportedContent = fs.readFileSync(downloadPath!, "utf-8");
+    const exportedContent = fs.readFileSync(downloadPath as string, "utf-8");
     const exportedData = JSON.parse(exportedContent);
     const originalCardCount = exportedData.namecards.length;
 
@@ -229,9 +229,9 @@ test.describe("JSON エクスポート/インポート異常系", () => {
     await page.getByRole("button", { name: /インポート/ }).click();
 
     // エラーメッセージが表示される
-    await expect(
-      page.getByText(/空|empty|エラー|失敗|不正/i),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/空|empty|エラー|失敗|不正/i)).toBeVisible({
+      timeout: 10000,
+    });
 
     // 一時ファイルを削除
     fs.unlinkSync(emptyFilePath);
@@ -267,7 +267,7 @@ test.describe("JSON エクスポート/インポート異常系", () => {
     expect(download.suggestedFilename()).toMatch(/\.json$/);
 
     const filePath = await download.path();
-    const content = fs.readFileSync(filePath!, "utf-8");
+    const content = fs.readFileSync(filePath as string, "utf-8");
     const data = JSON.parse(content);
 
     // 空の配列を含む有効な JSON

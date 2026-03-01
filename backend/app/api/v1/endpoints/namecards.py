@@ -21,7 +21,6 @@ from app.models import ContactMethod, NameCard, Relationship, Tag
 from app.schemas import (
     ContactMethodResponse,
     NameCardCreate,
-    NameCardResponse,
     NameCardUpdate,
     RelationshipResponse,
     TagResponse,

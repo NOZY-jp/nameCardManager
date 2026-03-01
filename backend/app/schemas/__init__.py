@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -52,7 +52,7 @@ class UserResponse(BaseModel):
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
-class ContactMethodType(str, Enum):
+class ContactMethodType(StrEnum):
     """連絡先の種類（17種）。"""
 
     email = "email"

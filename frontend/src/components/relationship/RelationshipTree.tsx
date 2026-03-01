@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { ChevronRight, Plus, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./RelationshipTree.module.scss";
 
 // ─── Types ───────────────────────────────────────────────
@@ -101,10 +101,7 @@ function TreeNode({ node, depth, onDelete, onUpdate }: TreeNodeProps) {
             />
           ) : (
             // biome-ignore lint/a11y/noStaticElementInteractions: dblClick for inline edit UX
-            <span
-              className={styles.nodeName}
-              onDoubleClick={handleDoubleClick}
-            >
+            <span className={styles.nodeName} onDoubleClick={handleDoubleClick}>
               {node.node_name}
             </span>
           )}

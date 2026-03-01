@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TagList } from "@/components/tag/TagList";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  getTags,
   createTag,
-  updateTag,
   deleteTag,
+  getTags,
   type Tag,
+  updateTag,
 } from "@/lib/api/tags";
 import styles from "./tags.module.scss";
 

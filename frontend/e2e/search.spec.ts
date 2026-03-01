@@ -10,10 +10,10 @@ import { expect, test } from "@playwright/test";
 
 // ── Helpers ──────────────────────────────────────────────
 
-const API_BASE = "/api/v1";
+const _API_BASE = "/api/v1";
 
 /** テスト用の名刺データ */
-const TEST_CARDS = {
+const _TEST_CARDS = {
   tanakaTaro: {
     last_name: "田中",
     first_name: "太郎",
@@ -74,13 +74,12 @@ test.describe("検索機能", () => {
 
   // ── 正常系 ──────────────────────────────────────────
 
-  test("test_search_by_name: 氏名でキーワード検索できる", async ({
-    page,
-  }) => {
+  test("test_search_by_name: 氏名でキーワード検索できる", async ({ page }) => {
     await page.goto("/");
 
-    const searchBox =
-      page.getByRole("searchbox").or(page.getByPlaceholder(/検索/));
+    const searchBox = page
+      .getByRole("searchbox")
+      .or(page.getByPlaceholder(/検索/));
     await searchBox.fill("田中");
     await waitForDebounce();
 
@@ -93,8 +92,9 @@ test.describe("検索機能", () => {
   test("test_search_partial_match: 部分一致で検索できる", async ({ page }) => {
     await page.goto("/");
 
-    const searchBox =
-      page.getByRole("searchbox").or(page.getByPlaceholder(/検索/));
+    const searchBox = page
+      .getByRole("searchbox")
+      .or(page.getByPlaceholder(/検索/));
     await searchBox.fill("田");
     await waitForDebounce();
 
@@ -105,8 +105,9 @@ test.describe("検索機能", () => {
   test("test_search_by_kana: カナで検索できる", async ({ page }) => {
     await page.goto("/");
 
-    const searchBox =
-      page.getByRole("searchbox").or(page.getByPlaceholder(/検索/));
+    const searchBox = page
+      .getByRole("searchbox")
+      .or(page.getByPlaceholder(/検索/));
     await searchBox.fill("たなか");
     await waitForDebounce();
 
@@ -163,8 +164,9 @@ test.describe("検索機能", () => {
     await page.goto("/");
 
     // テキスト検索
-    const searchBox =
-      page.getByRole("searchbox").or(page.getByPlaceholder(/検索/));
+    const searchBox = page
+      .getByRole("searchbox")
+      .or(page.getByPlaceholder(/検索/));
     await searchBox.fill("田中");
     await waitForDebounce();
 
@@ -184,8 +186,9 @@ test.describe("検索機能", () => {
   }) => {
     await page.goto("/");
 
-    const searchBox =
-      page.getByRole("searchbox").or(page.getByPlaceholder(/検索/));
+    const searchBox = page
+      .getByRole("searchbox")
+      .or(page.getByPlaceholder(/検索/));
     await searchBox.fill("存在しないキーワード");
     await waitForDebounce();
 
@@ -206,8 +209,9 @@ test.describe("検索機能", () => {
     expect(initialCount).toBeGreaterThanOrEqual(5);
 
     // 検索で絞り込み
-    const searchBox =
-      page.getByRole("searchbox").or(page.getByPlaceholder(/検索/));
+    const searchBox = page
+      .getByRole("searchbox")
+      .or(page.getByPlaceholder(/検索/));
     await searchBox.fill("田中");
     await waitForDebounce();
 

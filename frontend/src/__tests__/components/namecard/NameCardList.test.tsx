@@ -1,12 +1,14 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-
-import { NameCardList } from "@/components/namecard/NameCardList";
+import {
+  sampleNamecard,
+  sampleNamecardMinimal,
+} from "@/__tests__/utils/fixtures";
 import {
   renderWithProviders,
   userEvent,
 } from "@/__tests__/utils/renderWithProviders";
-import { sampleNamecard, sampleNamecardMinimal } from "@/__tests__/utils/fixtures";
+import { NameCardList } from "@/components/namecard/NameCardList";
 
 describe("NameCardList", () => {
   const threeCards = [
@@ -30,12 +32,7 @@ describe("NameCardList", () => {
 
   it("test_namecard_list_pagination", () => {
     renderWithProviders(
-      <NameCardList
-        items={threeCards}
-        total={50}
-        page={1}
-        perPage={20}
-      />,
+      <NameCardList items={threeCards} total={50} page={1} perPage={20} />,
     );
 
     const nav = screen.getByRole("navigation");

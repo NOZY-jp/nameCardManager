@@ -1,12 +1,11 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-
-import { NameCardEditDialog } from "@/components/namecard/NameCardEditDialog";
+import { sampleNamecard } from "@/__tests__/utils/fixtures";
 import {
   renderWithProviders,
   userEvent,
 } from "@/__tests__/utils/renderWithProviders";
-import { sampleNamecard } from "@/__tests__/utils/fixtures";
+import { NameCardEditDialog } from "@/components/namecard/NameCardEditDialog";
 
 describe("NameCardEditDialog", () => {
   const defaultProps = {

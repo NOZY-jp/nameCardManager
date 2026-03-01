@@ -1,5 +1,5 @@
-import type { NextConfig } from "next";
 import { join } from "node:path";
+import type { NextConfig } from "next";
 
 const stylesDir = join(process.cwd(), "src/styles");
 

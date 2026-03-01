@@ -9,8 +9,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models import ContactMethod, NameCard, Relationship, Tag
-
+from app.models import NameCard, Relationship, Tag
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  ヘルパー

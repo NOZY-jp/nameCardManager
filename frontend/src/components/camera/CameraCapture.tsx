@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import styles from "./CameraCapture.module.scss";
 
@@ -33,7 +33,11 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: {
+            facingMode: "environment",
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
           audio: false,
         });
 
@@ -114,7 +118,6 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
   return (
     <div className={styles.container}>
       <div className={styles.viewfinder}>
-        {/* biome-ignore lint/a11y/useMediaCaption: live camera feed */}
         <video
           ref={videoRef}
           className={styles.video}
@@ -125,7 +128,11 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
 
         <canvas ref={canvasRef} className={styles.hiddenCanvas} />
 
-        <section className={styles.guideOverlay} data-testid="camera-guide" aria-label="撮影ガイド">
+        <section
+          className={styles.guideOverlay}
+          data-testid="camera-guide"
+          aria-label="撮影ガイド"
+        >
           <div className={styles.guideFrame}>
             <span className={`${styles.corner} ${styles.cornerTL}`} />
             <span className={`${styles.corner} ${styles.cornerTR}`} />

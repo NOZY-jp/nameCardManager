@@ -11,7 +11,12 @@ export function ToastContainer() {
   return (
     <div className={styles.toastContainer}>
       {toasts.map((t) => (
-        <div key={t.id} className={styles.toast} data-type={t.type} role="alert">
+        <div
+          key={t.id}
+          className={styles.toast}
+          data-type={t.type}
+          role="alert"
+        >
           <span className={styles.toastMessage}>{t.message}</span>
           <button
             type="button"

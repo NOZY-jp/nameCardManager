@@ -1,16 +1,15 @@
-import { screen, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-
-import { NameCardForm } from "@/components/namecard/NameCardForm";
-import {
-  renderWithProviders,
-  userEvent,
-} from "@/__tests__/utils/renderWithProviders";
 import {
   sampleNamecard,
   sampleRelationshipTree,
   sampleTags,
 } from "@/__tests__/utils/fixtures";
+import {
+  renderWithProviders,
+  userEvent,
+} from "@/__tests__/utils/renderWithProviders";
+import { NameCardForm } from "@/components/namecard/NameCardForm";
 
 const CONTACT_METHOD_TYPES = [
   "email",
@@ -203,9 +202,7 @@ describe("NameCardForm", () => {
     );
 
     await user.click(relSelect);
-    await user.click(
-      screen.getByRole("option", { name: /ゴルフ仲間/ }),
-    );
+    await user.click(screen.getByRole("option", { name: /ゴルフ仲間/ }));
 
     expect(screen.getByText(/建築士会\/桑名支部/)).toBeInTheDocument();
     expect(screen.getByText(/ゴルフ仲間/)).toBeInTheDocument();
@@ -232,7 +229,9 @@ describe("NameCardForm", () => {
 
     for (const tag of sampleTags) {
       await user.click(tagSelect);
-      await user.click(screen.getByRole("option", { name: new RegExp(tag.name) }));
+      await user.click(
+        screen.getByRole("option", { name: new RegExp(tag.name) }),
+      );
     }
 
     for (const tag of sampleTags) {

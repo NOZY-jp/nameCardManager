@@ -42,7 +42,7 @@ def _parse_comma_ids(raw: str) -> list[int]:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Invalid ID value: {stripped}",
-            )
+            ) from None
     return result
 
 

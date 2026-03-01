@@ -55,19 +55,19 @@ test.describe("OCR フロー", () => {
     await page.getByRole("button", { name: /撮影/ }).click();
 
     // 四隅選択 UI が表示されるまで待つ
-    await expect(
-      page.getByRole("button", { name: /確定/ }),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: /確定/ })).toBeVisible({
+      timeout: 10000,
+    });
 
     // "確定" ボタンをクリック
     await page.getByRole("button", { name: /確定/ }).click();
 
     // ローディング表示を確認
-    await expect(
-      page.getByText(/処理中|読み取り中|OCR/),
-    ).toBeVisible({ timeout: 5000 }).catch(() => {
-      // ローディングが高速で消える場合はスキップ
-    });
+    await expect(page.getByText(/処理中|読み取り中|OCR/))
+      .toBeVisible({ timeout: 5000 })
+      .catch(() => {
+        // ローディングが高速で消える場合はスキップ
+      });
 
     // OCR 結果が NameCardForm にプリフィルされる
     // 姓 or 名のフィールドに値が自動入力される
@@ -75,9 +75,9 @@ test.describe("OCR フロー", () => {
     const firstNameField = page.getByLabel(/名/);
 
     // いずれかのフィールドに値が入っていることを確認（OCR 結果による）
-    await expect(
-      lastNameField.or(firstNameField),
-    ).not.toHaveValue("", { timeout: 30000 });
+    await expect(lastNameField.or(firstNameField)).not.toHaveValue("", {
+      timeout: 30000,
+    });
   });
 
   test("test_ocr_result_edit_and_save: OCR 結果を編集して保存できる", async ({
@@ -94,9 +94,9 @@ test.describe("OCR フロー", () => {
       page.getByTestId("camera-guide").or(page.getByRole("region")),
     ).toBeVisible({ timeout: 10000 });
     await page.getByRole("button", { name: /撮影/ }).click();
-    await expect(
-      page.getByRole("button", { name: /確定/ }),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: /確定/ })).toBeVisible({
+      timeout: 10000,
+    });
     await page.getByRole("button", { name: /確定/ }).click();
 
     // OCR 結果がフォームに反映されるのを待つ
@@ -113,9 +113,9 @@ test.describe("OCR フロー", () => {
 
     // 保存成功の確認（名刺詳細ページへの遷移またはトースト表示）
     await expect(
-      page.getByText(/保存しました|作成しました|登録しました/).or(
-        page.locator('[data-testid="namecard-detail"]'),
-      ),
+      page
+        .getByText(/保存しました|作成しました|登録しました/)
+        .or(page.locator('[data-testid="namecard-detail"]')),
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -139,9 +139,9 @@ test.describe("OCR フロー", () => {
     await page.getByRole("button", { name: /撮影/ }).click();
 
     // Step 4: 四隅選択 UI が表示される
-    await expect(
-      page.getByRole("button", { name: /確定/ }),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: /確定/ })).toBeVisible({
+      timeout: 10000,
+    });
 
     // Step 5: "確定" をクリック
     await page.getByRole("button", { name: /確定/ }).click();
@@ -164,9 +164,9 @@ test.describe("OCR フロー", () => {
 
     // Step 8: 名刺が正常に作成される
     await expect(
-      page.getByText(/保存しました|作成しました|登録しました/).or(
-        page.locator('[data-testid="namecard-detail"]'),
-      ),
+      page
+        .getByText(/保存しました|作成しました|登録しました/)
+        .or(page.locator('[data-testid="namecard-detail"]')),
     ).toBeVisible({ timeout: 10000 });
 
     // 名刺詳細ページに遷移していることを確認（URL にnamecardsが含まれる）
@@ -191,9 +191,9 @@ test.describe("OCR フロー異常系", () => {
       page.getByTestId("camera-guide").or(page.getByRole("region")),
     ).toBeVisible({ timeout: 10000 });
     await page.getByRole("button", { name: /撮影/ }).click();
-    await expect(
-      page.getByRole("button", { name: /確定/ }),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: /確定/ })).toBeVisible({
+      timeout: 10000,
+    });
 
     // OCR API をタイムアウトさせるためにルートをインターセプト
     await page.route("**/api/v1/ocr*", async (route) => {
@@ -206,9 +206,7 @@ test.describe("OCR フロー異常系", () => {
 
     // タイムアウトエラーメッセージが表示される
     await expect(
-      page.getByText(
-        /タイムアウト|時間がかかりすぎ|再試行|エラー|失敗/,
-      ),
+      page.getByText(/タイムアウト|時間がかかりすぎ|再試行|エラー|失敗/),
     ).toBeVisible({ timeout: 60000 });
   });
 

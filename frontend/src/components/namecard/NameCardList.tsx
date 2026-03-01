@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
 import { Inbox } from "lucide-react";
+import { useMemo } from "react";
 import type { NameCard } from "@/lib/api/namecards";
 import { NameCardItem } from "./NameCardItem";
 import styles from "./NameCardList.module.scss";

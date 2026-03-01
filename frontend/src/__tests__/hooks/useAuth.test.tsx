@@ -1,9 +1,9 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sampleAuthTokens, sampleUser } from "@/__tests__/utils/fixtures";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { sampleUser, sampleAuthTokens } from "@/__tests__/utils/fixtures";
+import { useAuth } from "@/hooks/useAuth";
 
 function createWrapper(initialUser?: typeof sampleUser | null) {
   return function Wrapper({ children }: { children: ReactNode }) {

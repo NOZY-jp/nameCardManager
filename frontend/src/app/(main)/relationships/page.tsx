@@ -1,15 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { RelationshipTree } from "@/components/relationship/RelationshipTree";
 import type { RelationshipTreeNode } from "@/components/relationship/RelationshipTree";
+import { RelationshipTree } from "@/components/relationship/RelationshipTree";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  getRelationships,
   createRelationship,
-  updateRelationship,
   deleteRelationship,
+  getRelationships,
+  updateRelationship,
 } from "@/lib/api/relationships";
 import styles from "./relationships.module.scss";
 

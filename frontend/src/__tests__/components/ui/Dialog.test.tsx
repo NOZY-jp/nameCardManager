@@ -1,10 +1,9 @@
-import { renderWithProviders, userEvent } from "@/__tests__/utils/renderWithProviders";
 import { screen, waitForElementToBeRemoved } from "@testing-library/react";
 import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  renderWithProviders,
+  userEvent,
+} from "@/__tests__/utils/renderWithProviders";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 function TestDialog() {
   return (
@@ -50,8 +49,9 @@ describe("Dialog", () => {
     await user.click(screen.getByRole("button", { name: "開く" }));
     expect(screen.getByText("内容")).toBeInTheDocument();
 
-    const overlay = document.querySelector("[data-overlay]")
-      ?? screen.getByRole("dialog").parentElement?.querySelector("[data-state]");
+    const overlay =
+      document.querySelector("[data-overlay]") ??
+      screen.getByRole("dialog").parentElement?.querySelector("[data-state]");
 
     if (overlay) {
       await user.click(overlay);

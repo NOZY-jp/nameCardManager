@@ -115,7 +115,10 @@ export const sampleAuthTokens = {
 
 // ─── API Responses ───────────────────────────────────────
 
-export const samplePaginatedResponse = <T>(items: T[], total = items.length) => ({
+export const samplePaginatedResponse = <T>(
+  items: T[],
+  total = items.length,
+) => ({
   items,
   total,
   page: 1,

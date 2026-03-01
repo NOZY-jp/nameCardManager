@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   renderWithProviders,
@@ -6,7 +6,8 @@ import {
 } from "@/__tests__/utils/renderWithProviders";
 import { CornerSelector } from "@/components/camera/CornerSelector";
 
-const imageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+const imageData =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
 describe("CornerSelector", () => {
   it("renders four corner points", () => {
@@ -42,10 +43,22 @@ describe("CornerSelector", () => {
 
     expect(handler).toHaveBeenCalledWith(
       expect.arrayContaining([
-        expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
-        expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
-        expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
-        expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+        expect.objectContaining({
+          x: expect.any(Number),
+          y: expect.any(Number),
+        }),
+        expect.objectContaining({
+          x: expect.any(Number),
+          y: expect.any(Number),
+        }),
+        expect.objectContaining({
+          x: expect.any(Number),
+          y: expect.any(Number),
+        }),
+        expect.objectContaining({
+          x: expect.any(Number),
+          y: expect.any(Number),
+        }),
       ]),
     );
   });

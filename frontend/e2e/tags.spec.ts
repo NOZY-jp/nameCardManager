@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("Tags", () => {
   test.beforeEach(async ({ page }) => {
@@ -38,9 +38,9 @@ test.describe("Tags", () => {
 
     await tagText.dblclick();
 
-    const editInput = page.getByRole("textbox", { name: /取引先/ }).or(
-      page.locator('input[value="取引先"]'),
-    );
+    const editInput = page
+      .getByRole("textbox", { name: /取引先/ })
+      .or(page.locator('input[value="取引先"]'));
     await editInput.clear();
     await editInput.fill("重要取引先");
     await editInput.press("Enter");
@@ -55,7 +55,9 @@ test.describe("Tags", () => {
     const tagElement = page.getByText("友人");
     await expect(tagElement).toBeVisible();
 
-    const tagRow = tagElement.locator("xpath=ancestor::*[@data-testid]").first();
+    const tagRow = tagElement
+      .locator("xpath=ancestor::*[@data-testid]")
+      .first();
     await tagRow.getByRole("button", { name: /削除/ }).click();
 
     await page.getByRole("button", { name: /削除する/ }).click();
@@ -73,9 +75,7 @@ test.describe("Tags", () => {
 
     await page.getByRole("button", { name: /追加/ }).click();
 
-    await expect(
-      page.getByText(/既に存在するタグです|重複/),
-    ).toBeVisible();
+    await expect(page.getByText(/既に存在するタグです|重複/)).toBeVisible();
   });
 
   test("test_create_tag_empty_name", async ({ page }) => {
@@ -83,8 +83,6 @@ test.describe("Tags", () => {
 
     await page.getByRole("button", { name: /追加/ }).click();
 
-    await expect(
-      page.getByText(/タグ名を入力してください|必須/),
-    ).toBeVisible();
+    await expect(page.getByText(/タグ名を入力してください|必須/)).toBeVisible();
   });
 });

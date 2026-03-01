@@ -39,9 +39,7 @@ describe("CameraCapture", () => {
     renderWithProviders(<CameraCapture onCapture={vi.fn()} />);
 
     await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: /撮影/i }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /撮影/i })).toBeInTheDocument();
     });
   });
 
@@ -57,7 +55,9 @@ describe("CameraCapture", () => {
       expect(screen.getByRole("button", { name: /撮影/i })).toBeInTheDocument();
     });
 
-    await userEvent.setup().click(screen.getByRole("button", { name: /撮影/i }));
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: /撮影/i }));
 
     await waitFor(() => {
       expect(handler).toHaveBeenCalled();

@@ -1,5 +1,5 @@
 import { screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   renderWithProviders,
   userEvent,
@@ -18,7 +18,8 @@ describe("SearchBar", () => {
   it("reflects text input", async () => {
     renderWithProviders(<SearchBar onSearch={vi.fn()} />);
 
-    const input = screen.getByRole("searchbox") ?? screen.getByPlaceholderText(/検索/i);
+    const input =
+      screen.getByRole("searchbox") ?? screen.getByPlaceholderText(/検索/i);
     await userEvent.setup().type(input, "田中");
 
     expect(input).toHaveValue("田中");
@@ -30,8 +31,11 @@ describe("SearchBar", () => {
 
     renderWithProviders(<SearchBar onSearch={handler} debounce={300} />);
 
-    const input = screen.getByRole("searchbox") ?? screen.getByPlaceholderText(/検索/i);
-    await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).type(input, "田中");
+    const input =
+      screen.getByRole("searchbox") ?? screen.getByPlaceholderText(/検索/i);
+    await userEvent
+      .setup({ advanceTimers: vi.advanceTimersByTime })
+      .type(input, "田中");
 
     expect(handler).not.toHaveBeenCalledWith("田中");
 
@@ -48,10 +52,13 @@ describe("SearchBar", () => {
     const handler = vi.fn();
     renderWithProviders(<SearchBar onSearch={handler} />);
 
-    const input = screen.getByRole("searchbox") ?? screen.getByPlaceholderText(/検索/i);
+    const input =
+      screen.getByRole("searchbox") ?? screen.getByPlaceholderText(/検索/i);
     await userEvent.setup().type(input, "田中");
 
-    const clearButton = screen.getByRole("button", { name: /クリア|clear|✕|×/i });
+    const clearButton = screen.getByRole("button", {
+      name: /クリア|clear|✕|×/i,
+    });
     await userEvent.setup().click(clearButton);
 
     expect(input).toHaveValue("");

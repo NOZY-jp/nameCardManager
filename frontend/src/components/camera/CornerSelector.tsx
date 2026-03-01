@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import styles from "./CornerSelector.module.scss";
 
@@ -16,19 +16,28 @@ interface CornerSelectorProps {
   onBack?: () => void;
 }
 
-const CORNER_LABELS = ["topLeft", "topRight", "bottomRight", "bottomLeft"] as const;
+const CORNER_LABELS = [
+  "topLeft",
+  "topRight",
+  "bottomRight",
+  "bottomLeft",
+] as const;
 
 function getDefaultCorners(width: number, height: number): CornerPoint[] {
   const pad = 0.05;
   return [
-    { x: width * pad, y: height * pad },           // topLeft
-    { x: width * (1 - pad), y: height * pad },     // topRight
+    { x: width * pad, y: height * pad }, // topLeft
+    { x: width * (1 - pad), y: height * pad }, // topRight
     { x: width * (1 - pad), y: height * (1 - pad) }, // bottomRight
-    { x: width * pad, y: height * (1 - pad) },     // bottomLeft
+    { x: width * pad, y: height * (1 - pad) }, // bottomLeft
   ];
 }
 
-export function CornerSelector({ image, onConfirm, onBack }: CornerSelectorProps) {
+export function CornerSelector({
+  image,
+  onConfirm,
+  onBack,
+}: CornerSelectorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [imageSize, setImageSize] = useState({ width: 400, height: 300 });
   const [corners, setCorners] = useState<CornerPoint[]>(() =>
@@ -57,8 +66,14 @@ export function CornerSelector({ image, onConfirm, onBack }: CornerSelectorProps
       const scaleY = imageSize.height / rect.height;
 
       return {
-        x: Math.max(0, Math.min(imageSize.width, (e.clientX - rect.left) * scaleX)),
-        y: Math.max(0, Math.min(imageSize.height, (e.clientY - rect.top) * scaleY)),
+        x: Math.max(
+          0,
+          Math.min(imageSize.width, (e.clientX - rect.left) * scaleX),
+        ),
+        y: Math.max(
+          0,
+          Math.min(imageSize.height, (e.clientY - rect.top) * scaleY),
+        ),
       };
     },
     [imageSize],
@@ -79,9 +94,7 @@ export function CornerSelector({ image, onConfirm, onBack }: CornerSelectorProps
       const pos = getPointerPosition(e);
       if (!pos) return;
 
-      setCorners((prev) =>
-        prev.map((c, i) => (i === dragging ? pos : c)),
-      );
+      setCorners((prev) => prev.map((c, i) => (i === dragging ? pos : c)));
     },
     [dragging, getPointerPosition],
   );
@@ -108,6 +121,7 @@ export function CornerSelector({ image, onConfirm, onBack }: CornerSelectorProps
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
+        {/* biome-ignore lint/performance/noImgElement: raw img needed for canvas-based corner selection */}
         <img
           src={image}
           alt="撮影画像"
@@ -127,7 +141,11 @@ export function CornerSelector({ image, onConfirm, onBack }: CornerSelectorProps
           {/* Darkened area outside selection */}
           <defs>
             <mask id="corner-mask">
-              <rect width={imageSize.width} height={imageSize.height} fill="white" />
+              <rect
+                width={imageSize.width}
+                height={imageSize.height}
+                fill="white"
+              />
               <polygon points={polygonPoints} fill="black" />
             </mask>
           </defs>
@@ -168,7 +186,12 @@ export function CornerSelector({ image, onConfirm, onBack }: CornerSelectorProps
             戻る
           </Button>
         )}
-        <Button variant="ghost" size="sm" onClick={handleReset} aria-label="リセット">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleReset}
+          aria-label="リセット"
+        >
           <RotateCcw size={16} />
           リセット
         </Button>

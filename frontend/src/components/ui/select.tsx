@@ -2,13 +2,13 @@
 
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 import styles from "./select.module.scss";
 
@@ -88,7 +88,13 @@ export function Select({
 }
 
 // ── SelectTrigger ───────────────────────────────────────
-export function SelectTrigger({ children, "aria-label": ariaLabel }: { children: ReactNode; "aria-label"?: string }) {
+export function SelectTrigger({
+  children,
+  "aria-label": ariaLabel,
+}: {
+  children: ReactNode;
+  "aria-label"?: string;
+}) {
   const { open, setOpen } = useContext(SelectContext);
   const ref = useRef<HTMLButtonElement>(null);
 
@@ -97,7 +103,12 @@ export function SelectTrigger({ children, "aria-label": ariaLabel }: { children:
     if (!open) return;
 
     const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.closest(`.${styles.selectWrapper}`)?.contains(e.target as Node)) {
+      if (
+        ref.current &&
+        !ref.current
+          .closest(`.${styles.selectWrapper}`)
+          ?.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     };
@@ -125,6 +136,7 @@ export function SelectTrigger({ children, "aria-label": ariaLabel }: { children:
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
+        aria-hidden="true"
       >
         <path d="m6 9 6 6 6-6" />
       </svg>
@@ -149,7 +161,11 @@ export function SelectContent({ children }: { children: ReactNode }) {
 
   if (!open) return null;
 
-  return <div className={styles.content} role="listbox">{children}</div>;
+  return (
+    <div className={styles.content} role="listbox">
+      {children}
+    </div>
+  );
 }
 
 // ── SelectItem ──────────────────────────────────────────
@@ -159,9 +175,12 @@ interface SelectItemProps {
   "aria-label"?: string;
 }
 
-export function SelectItem({ value: itemValue, children, "aria-label": ariaLabel }: SelectItemProps) {
-  const { value, onValueChange, setSelectedLabel } =
-    useContext(SelectContext);
+export function SelectItem({
+  value: itemValue,
+  children,
+  "aria-label": ariaLabel,
+}: SelectItemProps) {
+  const { value, onValueChange, setSelectedLabel } = useContext(SelectContext);
   const isSelected = value === itemValue;
 
   const handleClick = () => {

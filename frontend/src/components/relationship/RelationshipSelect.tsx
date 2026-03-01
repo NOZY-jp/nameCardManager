@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./RelationshipSelect.module.scss";
 
 // ─── Types ───────────────────────────────────────────────
@@ -98,6 +98,7 @@ function TreeNode({
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
+              aria-hidden="true"
             >
               <path d="m9 18 6-6-6-6" />
             </svg>
@@ -121,7 +122,7 @@ function TreeNode({
       </div>
       {hasChildren && isExpanded && (
         <div className={styles.children}>
-          {node.children!.map((child) => (
+          {node.children?.map((child) => (
             <TreeNode
               key={child.id}
               node={child}
@@ -160,7 +161,10 @@ export function RelationshipSelect({
   useEffect(() => {
     if (!open) return;
     const handleClick = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     };
@@ -247,6 +251,7 @@ export function RelationshipSelect({
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
+          aria-hidden="true"
         >
           <path d="m6 9 6 6 6-6" />
         </svg>

@@ -1,21 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
-import { namecardCreateSchema, type NamecardCreateFormData } from "@/lib/schemas/namecard";
-import { CONTACT_METHOD_TYPES } from "@/lib/schemas/contact-method";
+import { useState } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
+import { CONTACT_METHOD_TYPES } from "@/lib/schemas/contact-method";
+import {
+  type NamecardCreateFormData,
+  namecardCreateSchema,
+} from "@/lib/schemas/namecard";
 import styles from "./NameCardForm.module.scss";
 
 interface RelationshipOption {
@@ -32,9 +35,11 @@ interface TagOption {
 }
 
 interface NameCardFormProps {
-  defaultValues?: Partial<NamecardCreateFormData & {
-    contact_methods: Array<{ type: string; value: string; label?: string }>;
-  }>;
+  defaultValues?: Partial<
+    NamecardCreateFormData & {
+      contact_methods: Array<{ type: string; value: string; label?: string }>;
+    }
+  >;
   relationships?: RelationshipOption[];
   tags?: TagOption[];
   onSubmit?: (data: NamecardCreateFormData) => void;
@@ -47,7 +52,9 @@ function flattenRelationships(
 ): Array<{ id: string; label: string }> {
   const result: Array<{ id: string; label: string }> = [];
   for (const node of nodes) {
-    const label = parentName ? `${parentName}/${node.node_name}` : node.node_name;
+    const label = parentName
+      ? `${parentName}/${node.node_name}`
+      : node.node_name;
     result.push({ id: node.id, label });
     if (node.children?.length) {
       result.push(...flattenRelationships(node.children, node.node_name));
@@ -79,11 +86,12 @@ export function NameCardForm({
       department: defaultValues?.department ?? "",
       position: defaultValues?.position ?? "",
       memo: defaultValues?.memo ?? "",
-      contact_methods: defaultValues?.contact_methods?.map((cm) => ({
-        type: cm.type as (typeof CONTACT_METHOD_TYPES)[number],
-        value: cm.value,
-        is_primary: false,
-      })) ?? [],
+      contact_methods:
+        defaultValues?.contact_methods?.map((cm) => ({
+          type: cm.type as (typeof CONTACT_METHOD_TYPES)[number],
+          value: cm.value,
+          is_primary: false,
+        })) ?? [],
       relationship_ids: defaultValues?.relationship_ids ?? [],
       tag_ids: defaultValues?.tag_ids ?? [],
     },
@@ -111,7 +119,9 @@ export function NameCardForm({
     >
       <div className={styles.fieldRow}>
         <div className={styles.fieldGroup}>
-          <Label htmlFor="last_name" required>姓</Label>
+          <Label htmlFor="last_name" required>
+            姓
+          </Label>
           <Input
             id="last_name"
             {...register("last_name")}
@@ -119,7 +129,9 @@ export function NameCardForm({
           />
         </div>
         <div className={styles.fieldGroup}>
-          <Label htmlFor="first_name" required>名</Label>
+          <Label htmlFor="first_name" required>
+            名
+          </Label>
           <Input
             id="first_name"
             {...register("first_name")}
@@ -157,11 +169,7 @@ export function NameCardForm({
 
       <div className={styles.fieldGroup}>
         <Label htmlFor="memo">メモ</Label>
-        <textarea
-          id="memo"
-          className={styles.textarea}
-          {...register("memo")}
-        />
+        <textarea id="memo" className={styles.textarea} {...register("memo")} />
       </div>
 
       <div className={styles.contactSection}>
@@ -171,7 +179,9 @@ export function NameCardForm({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => append({ type: "email", value: "", is_primary: false })}
+            onClick={() =>
+              append({ type: "email", value: "", is_primary: false })
+            }
           >
             連絡先を追加
           </Button>
@@ -191,10 +201,11 @@ export function NameCardForm({
                     `input[name="contact_methods.${index}.type"]`,
                   ) as HTMLInputElement | null;
                   if (input) {
-                    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-                      window.HTMLInputElement.prototype,
-                      "value",
-                    )?.set;
+                    const nativeInputValueSetter =
+                      Object.getOwnPropertyDescriptor(
+                        window.HTMLInputElement.prototype,
+                        "value",
+                      )?.set;
                     nativeInputValueSetter?.call(input, val);
                     input.dispatchEvent(new Event("input", { bubbles: true }));
                   }
@@ -211,7 +222,10 @@ export function NameCardForm({
                   ))}
                 </SelectContent>
               </Select>
-              <input type="hidden" {...register(`contact_methods.${index}.type`)} />
+              <input
+                type="hidden"
+                {...register(`contact_methods.${index}.type`)}
+              />
             </div>
 
             <div className={styles.contactValue}>
@@ -269,7 +283,9 @@ export function NameCardForm({
                       type="button"
                       className={styles.chipRemove}
                       onClick={() =>
-                        setSelectedRelIds((prev) => prev.filter((x) => x !== id))
+                        setSelectedRelIds((prev) =>
+                          prev.filter((x) => x !== id),
+                        )
                       }
                     >
                       <X size={12} />
@@ -315,7 +331,9 @@ export function NameCardForm({
                       type="button"
                       className={styles.chipRemove}
                       onClick={() =>
-                        setSelectedTagIds((prev) => prev.filter((x) => x !== id))
+                        setSelectedTagIds((prev) =>
+                          prev.filter((x) => x !== id),
+                        )
                       }
                     >
                       <X size={12} />

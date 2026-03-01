@@ -12,7 +12,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
@@ -33,7 +33,7 @@ router = APIRouter()
 
 def _to_response(rel: Relationship, db: DbSession) -> dict:
     """Relationship モデルをレスポンス dict に変換する。"""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return {
         "id": rel.id,
         "name": rel.name,
@@ -50,7 +50,7 @@ def _build_tree(
 ) -> list[dict]:
     """フラットなノードリストからネストされたツリーを構築する。"""
     by_id: dict[int, dict] = {}
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     for node in nodes:
         by_id[node.id] = {

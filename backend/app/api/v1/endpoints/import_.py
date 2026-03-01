@@ -16,7 +16,6 @@ from sqlalchemy import select
 from app.api.v1.deps import AuthUser, DbSession
 from app.models import ContactMethod, NameCard, Relationship, Tag
 
-
 router = APIRouter()
 
 
@@ -44,7 +43,7 @@ async def import_json(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid JSON format",
-        )
+        ) from None
 
     if not isinstance(payload, dict):
         raise HTTPException(

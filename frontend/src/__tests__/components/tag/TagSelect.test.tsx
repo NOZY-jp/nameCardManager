@@ -1,18 +1,15 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-
-import { TagSelect } from "@/components/tag/TagSelect";
 import { sampleTags } from "@/__tests__/utils/fixtures";
 import { renderWithProviders } from "@/__tests__/utils/renderWithProviders";
+import { TagSelect } from "@/components/tag/TagSelect";
 
 describe("TagSelect", () => {
   it("test_tag_select_renders_options", async () => {
     const onChange = vi.fn();
 
-    renderWithProviders(
-      <TagSelect tags={sampleTags} onChange={onChange} />,
-    );
+    renderWithProviders(<TagSelect tags={sampleTags} onChange={onChange} />);
 
     const trigger = screen.getByRole("combobox");
     await userEvent.click(trigger);
@@ -25,9 +22,7 @@ describe("TagSelect", () => {
   it("test_tag_select_selects_tag", async () => {
     const onChange = vi.fn();
 
-    renderWithProviders(
-      <TagSelect tags={sampleTags} onChange={onChange} />,
-    );
+    renderWithProviders(<TagSelect tags={sampleTags} onChange={onChange} />);
 
     const trigger = screen.getByRole("combobox");
     await userEvent.click(trigger);

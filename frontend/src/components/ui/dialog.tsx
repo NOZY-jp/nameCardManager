@@ -2,12 +2,12 @@
 
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import styles from "./dialog.module.scss";
@@ -30,7 +30,11 @@ interface DialogProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-export function Dialog({ children, open: controlledOpen, onOpenChange }: DialogProps) {
+export function Dialog({
+  children,
+  open: controlledOpen,
+  onOpenChange,
+}: DialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
@@ -69,7 +73,8 @@ export function DialogTrigger({ children, asChild }: DialogTriggerProps) {
       onClick?: () => void;
     }>;
     return (
-      <span onClick={handleClick} onKeyDown={undefined}>
+      // biome-ignore lint/a11y/noStaticElementInteractions: wrapper delegates click to child dialog trigger
+      <span role="presentation" onClick={handleClick} onKeyDown={undefined}>
         {child}
       </span>
     );
@@ -137,6 +142,7 @@ export function DialogContent({ children, className }: DialogContentProps) {
 
   return createPortal(
     <>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: overlay click-to-close is intentional */}
       <div
         className={styles.overlay}
         data-overlay=""
@@ -166,9 +172,7 @@ export function DialogTitle({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <h2 className={`${styles.title} ${className ?? ""}`}>{children}</h2>
-  );
+  return <h2 className={`${styles.title} ${className ?? ""}`}>{children}</h2>;
 }
 
 // ── DialogDescription ───────────────────────────────────

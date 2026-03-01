@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 
 from app.models import Relationship
 
-
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  正常系（13 ケース）
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -1,8 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { useToast } from "@/hooks/useToast";
+import { describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/contexts/ToastContext";
+import { useToast } from "@/hooks/useToast";
 
 function Wrapper({ children }: { children: ReactNode }) {
   return <ToastProvider>{children}</ToastProvider>;

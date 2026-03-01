@@ -261,7 +261,7 @@ def upload_image(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Invalid image file.",
-        )
+        ) from None
 
     # upload_id 発行
     upload_id = str(uuid.uuid4())
@@ -302,13 +302,13 @@ def process_image(
         raise HTTPException(
             status_code=status.HTTP_408_REQUEST_TIMEOUT,
             detail="OCR timeout. Please try again.",
-        )
+        ) from None
     except Exception:
         _uploads.pop(body.upload_id, None)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="OCR processing failed.",
-        )
+        ) from None
 
     # 遠近補正
     try:
@@ -318,7 +318,7 @@ def process_image(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Image processing failed.",
-        )
+        ) from None
 
     # WebP 保存
     settings = get_settings()

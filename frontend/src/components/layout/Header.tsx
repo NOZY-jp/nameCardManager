@@ -1,10 +1,10 @@
 "use client";
 
+import { LogOut, Moon, Sun } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { Moon, Sun, LogOut } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import styles from "./header.module.scss";
 
 export function Header() {

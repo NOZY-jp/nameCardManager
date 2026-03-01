@@ -3,7 +3,6 @@ import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 import { resetRouterMock } from "@/__tests__/utils/mocks/router";
 
-// biome-ignore lint: @testing-library/react requires jest global for fake-timer compat
 (globalThis as Record<string, unknown>).jest = vi;
 
 afterEach(() => {
@@ -27,9 +26,9 @@ vi.mock("next/navigation", async () => {
 // Mock next/image
 vi.mock("next/image", () => ({
   default: (props: Record<string, unknown>) => {
-    // biome-ignore lint: test mock
-    const { priority, fill, ...rest } = props;
-    return <img {...rest} />;
+    const { priority: _priority, fill: _fill, ...rest } = props;
+    // biome-ignore lint/performance/noImgElement: test mock for next/image
+    return <img alt="" {...rest} />;
   },
 }));
 

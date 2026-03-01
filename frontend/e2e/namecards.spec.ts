@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 const TEST_USER = {
   email: `e2e-cards-${Date.now()}@example.com`,
@@ -8,7 +8,10 @@ const TEST_USER = {
 async function registerAndLogin(page: Page) {
   await page.goto("/register");
   await page.getByLabel(/メールアドレス/).fill(TEST_USER.email);
-  await page.getByLabel(/パスワード/).first().fill(TEST_USER.password);
+  await page
+    .getByLabel(/パスワード/)
+    .first()
+    .fill(TEST_USER.password);
   await page.getByRole("button", { name: /登録/ }).click();
   await page.waitForURL(/\/(login)?/);
 
@@ -164,9 +167,9 @@ test.describe("名刺 CRUD", () => {
 
     await page.goto("/");
 
-    const thumbnail = page.getByRole("img").or(
-      page.locator("[data-testid='namecard-placeholder-icon']"),
-    );
+    const thumbnail = page
+      .getByRole("img")
+      .or(page.locator("[data-testid='namecard-placeholder-icon']"));
     await expect(thumbnail.first()).toBeVisible();
   });
 

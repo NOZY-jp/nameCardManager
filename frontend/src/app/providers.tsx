@@ -1,10 +1,10 @@
 "use client";
 
 import { ThemeProvider } from "next-themes";
+import type { ReactNode } from "react";
+import { ToastContainer } from "@/components/ui/toast";
 import { AuthProvider } from "@/lib/contexts/AuthContext";
 import { ToastProvider } from "@/lib/contexts/ToastContext";
-import { ToastContainer } from "@/components/ui/toast";
-import type { ReactNode } from "react";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (

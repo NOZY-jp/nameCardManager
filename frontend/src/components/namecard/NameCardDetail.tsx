@@ -1,10 +1,10 @@
 "use client";
 
+import { ArrowLeft, Edit, Trash2 } from "lucide-react";
 import Image from "next/image";
-import { Edit, Trash2, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { NameCard } from "@/lib/api/namecards";
 import { Button } from "@/components/ui/button";
+import type { NameCard } from "@/lib/api/namecards";
 import styles from "./NameCardDetail.module.scss";
 
 interface NameCardDetailProps {
@@ -13,7 +13,11 @@ interface NameCardDetailProps {
   onDelete?: () => void;
 }
 
-export function NameCardDetail({ card, onEdit, onDelete }: NameCardDetailProps) {
+export function NameCardDetail({
+  card,
+  onEdit,
+  onDelete,
+}: NameCardDetailProps) {
   const router = useRouter();
 
   const fullName = `${card.last_name} ${card.first_name}`;

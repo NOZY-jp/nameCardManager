@@ -3,11 +3,7 @@ import styles from "./card.module.scss";
 
 export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={`${styles.card} ${className ?? ""}`}
-      {...props}
-    />
+    <div ref={ref} className={`${styles.card} ${className ?? ""}`} {...props} />
   ),
 );
 Card.displayName = "Card";

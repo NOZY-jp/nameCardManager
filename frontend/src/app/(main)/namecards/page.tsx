@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getNameCards, type NameCard } from "@/lib/api/namecards";
 import { NameCardList } from "@/components/namecard";
+import { getNameCards, type NameCard } from "@/lib/api/namecards";
 
 export default function NameCardsPage() {
   const [items, setItems] = useState<NameCard[]>([]);

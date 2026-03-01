@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { CameraCapture } from "./CameraCapture";
-import { CornerSelector, type CornerPoint } from "./CornerSelector";
 import { imageApi } from "@/lib/api/images";
 import type { NamecardCreateFormData } from "@/lib/schemas/namecard";
+import { CameraCapture } from "./CameraCapture";
 import styles from "./CameraOCRFlow.module.scss";
+import { type CornerPoint, CornerSelector } from "./CornerSelector";
 
 type FlowStep = "camera" | "corners" | "processing";
 
@@ -57,14 +57,20 @@ export function CameraOCRFlow({ onComplete, onCancel }: CameraOCRFlowProps) {
           position: ocr_result.position ?? "",
           memo: ocr_result.memo ?? "",
           contact_methods: ocr_result.contact_methods?.map((cm) => ({
-            type: cm.type as "email" | "phone" | "mobile" | "fax" | "url" | "other",
+            type: cm.type as
+              | "email"
+              | "phone"
+              | "mobile"
+              | "fax"
+              | "url"
+              | "other",
             value: cm.value,
             is_primary: false,
           })),
         };
 
         onComplete(formData);
-      } catch (err) {
+      } catch (_err) {
         setError("OCR処理に失敗しました。もう一度お試しください。");
         setStep("corners");
       }

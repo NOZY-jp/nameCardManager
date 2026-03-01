@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./SearchBar.module.scss";
 
 interface SearchBarProps {

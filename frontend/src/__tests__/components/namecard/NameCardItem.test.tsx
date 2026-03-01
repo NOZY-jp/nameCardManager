@@ -1,13 +1,12 @@
 import { screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
 import { useRouter } from "next/navigation";
-
-import { NameCardItem } from "@/components/namecard/NameCardItem";
+import { describe, expect, it } from "vitest";
+import { sampleNamecard } from "@/__tests__/utils/fixtures";
 import {
   renderWithProviders,
   userEvent,
 } from "@/__tests__/utils/renderWithProviders";
-import { sampleNamecard } from "@/__tests__/utils/fixtures";
+import { NameCardItem } from "@/components/namecard/NameCardItem";
 
 describe("NameCardItem", () => {
   const cardWithRelationships = {
@@ -48,9 +47,7 @@ describe("NameCardItem", () => {
   it("test_namecard_item_renders_relationships", () => {
     renderWithProviders(<NameCardItem card={cardWithRelationships} />);
 
-    expect(
-      screen.getByText("建築士会/桑名支部/青年会長"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("建築士会/桑名支部/青年会長")).toBeInTheDocument();
   });
 
   it("test_namecard_item_renders_tags", () => {
@@ -65,7 +62,10 @@ describe("NameCardItem", () => {
 
     const img = screen.getByRole("img");
     expect(img).toBeInTheDocument();
-    expect(img).toHaveAttribute("src", expect.stringContaining("/images/1.webp"));
+    expect(img).toHaveAttribute(
+      "src",
+      expect.stringContaining("/images/1.webp"),
+    );
   });
 
   it("test_namecard_item_no_thumbnail", () => {

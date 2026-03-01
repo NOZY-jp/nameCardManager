@@ -1,10 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getNameCard, deleteNameCard, updateNameCard, type NameCard } from "@/lib/api/namecards";
-import type { NamecardCreateFormData } from "@/lib/schemas/namecard";
+import { useCallback, useEffect, useState } from "react";
 import { NameCardDetail, NameCardEditDialog } from "@/components/namecard";
+import {
+  deleteNameCard,
+  getNameCard,
+  type NameCard,
+  updateNameCard,
+} from "@/lib/api/namecards";
+import type { NamecardCreateFormData } from "@/lib/schemas/namecard";
 
 export default function NameCardDetailPage() {
   const params = useParams();

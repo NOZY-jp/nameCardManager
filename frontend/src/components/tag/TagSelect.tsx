@@ -35,7 +35,10 @@ export function TagSelect({
   useEffect(() => {
     if (!open) return;
     const handleClick = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     };
@@ -66,9 +69,8 @@ export function TagSelect({
     [multiple, onChange, selected],
   );
 
-  const displayText = selected.length > 0
-    ? selected.map((t) => t.name).join(", ")
-    : null;
+  const displayText =
+    selected.length > 0 ? selected.map((t) => t.name).join(", ") : null;
 
   return (
     <div className={styles.wrapper} ref={wrapperRef}>
@@ -92,6 +94,7 @@ export function TagSelect({
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
+          aria-hidden="true"
         >
           <path d="m6 9 6 6 6-6" />
         </svg>

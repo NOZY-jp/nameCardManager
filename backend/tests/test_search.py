@@ -5,13 +5,12 @@ GET /api/v1/search – テキスト検索 + フィルタリング
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models import ContactMethod, NameCard, Relationship, Tag
-
+from app.models import NameCard, Tag
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  正常系
@@ -249,7 +248,7 @@ def test_search_filter_by_created_at_range(
     sample_namecard: dict,
 ) -> None:
     """created_at の範囲フィルタ。"""
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     start = (now - timedelta(hours=1)).isoformat()
     end = (now + timedelta(hours=1)).isoformat()
 
@@ -269,7 +268,7 @@ def test_search_filter_by_updated_at_range(
     sample_namecard: dict,
 ) -> None:
     """updated_at の範囲フィルタ。"""
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     start = (now - timedelta(hours=1)).isoformat()
     end = (now + timedelta(hours=1)).isoformat()
 

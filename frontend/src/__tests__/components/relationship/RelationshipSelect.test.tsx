@@ -1,20 +1,16 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-
-import { RelationshipSelect } from "@/components/relationship/RelationshipSelect";
 import { sampleRelationshipTree } from "@/__tests__/utils/fixtures";
 import { renderWithProviders } from "@/__tests__/utils/renderWithProviders";
+import { RelationshipSelect } from "@/components/relationship/RelationshipSelect";
 
 describe("RelationshipSelect", () => {
   it("test_relationship_select_renders_tree", async () => {
     const onChange = vi.fn();
 
     renderWithProviders(
-      <RelationshipSelect
-        tree={sampleRelationshipTree}
-        onChange={onChange}
-      />,
+      <RelationshipSelect tree={sampleRelationshipTree} onChange={onChange} />,
     );
 
     const trigger = screen.getByRole("combobox");
@@ -28,10 +24,7 @@ describe("RelationshipSelect", () => {
     const onChange = vi.fn();
 
     renderWithProviders(
-      <RelationshipSelect
-        tree={sampleRelationshipTree}
-        onChange={onChange}
-      />,
+      <RelationshipSelect tree={sampleRelationshipTree} onChange={onChange} />,
     );
 
     const trigger = screen.getByRole("combobox");
@@ -61,9 +54,7 @@ describe("RelationshipSelect", () => {
       />,
     );
 
-    expect(
-      screen.getByText("建築士会/桑名支部/青年会長"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("建築士会/桑名支部/青年会長")).toBeInTheDocument();
   });
 
   it("test_relationship_select_multiple", async () => {

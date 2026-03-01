@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("Relationships", () => {
   test.beforeEach(async ({ page }) => {
@@ -27,7 +27,10 @@ test.describe("Relationships", () => {
     const nameInput = page.getByRole("textbox");
     await nameInput.fill("Jasca");
 
-    await page.getByRole("button", { name: /確定|保存|追加/ }).last().click();
+    await page
+      .getByRole("button", { name: /確定|保存|追加/ })
+      .last()
+      .click();
 
     await expect(page.getByText("Jasca")).toBeVisible();
   });
@@ -38,13 +41,18 @@ test.describe("Relationships", () => {
     const parentNode = page.getByText("建築士会");
     await expect(parentNode).toBeVisible();
 
-    const parentRow = parentNode.locator("xpath=ancestor::*[@data-testid]").first();
+    const parentRow = parentNode
+      .locator("xpath=ancestor::*[@data-testid]")
+      .first();
     await parentRow.getByRole("button", { name: /子を追加/ }).click();
 
     const nameInput = page.getByRole("textbox");
     await nameInput.fill("桑名支部");
 
-    await page.getByRole("button", { name: /確定|保存|追加/ }).last().click();
+    await page
+      .getByRole("button", { name: /確定|保存|追加/ })
+      .last()
+      .click();
 
     await expect(page.getByText("桑名支部")).toBeVisible();
   });
@@ -57,9 +65,9 @@ test.describe("Relationships", () => {
 
     await nodeText.dblclick();
 
-    const editInput = page.getByRole("textbox", { name: /桑名支部/ }).or(
-      page.locator('input[value="桑名支部"]'),
-    );
+    const editInput = page
+      .getByRole("textbox", { name: /桑名支部/ })
+      .or(page.locator('input[value="桑名支部"]'));
     await editInput.clear();
     await editInput.fill("四日市支部");
     await editInput.press("Enter");
@@ -91,7 +99,9 @@ test.describe("Relationships", () => {
     const parentNode = page.getByText("建築士会");
     await expect(parentNode).toBeVisible();
 
-    const parentRow = parentNode.locator("xpath=ancestor::*[@data-testid]").first();
+    const parentRow = parentNode
+      .locator("xpath=ancestor::*[@data-testid]")
+      .first();
 
     const deleteButton = parentRow.getByRole("button", { name: /削除/ });
     const isDisabled = await deleteButton.isDisabled().catch(() => true);
@@ -111,10 +121,11 @@ test.describe("Relationships", () => {
 
     await page.getByRole("button", { name: /追加/ }).click();
 
-    await page.getByRole("button", { name: /確定|保存|追加/ }).last().click();
+    await page
+      .getByRole("button", { name: /確定|保存|追加/ })
+      .last()
+      .click();
 
-    await expect(
-      page.getByText(/名前を入力してください|必須/),
-    ).toBeVisible();
+    await expect(page.getByText(/名前を入力してください|必須/)).toBeVisible();
   });
 });

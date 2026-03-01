@@ -1,5 +1,8 @@
-import { renderWithProviders, userEvent } from "@/__tests__/utils/renderWithProviders";
 import { screen } from "@testing-library/react";
+import {
+  renderWithProviders,
+  userEvent,
+} from "@/__tests__/utils/renderWithProviders";
 import {
   Select,
   SelectContent,

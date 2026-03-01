@@ -1,9 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import styles from "./help.module.scss";
 
 export default function HelpPage() {
@@ -57,7 +52,9 @@ export default function HelpPage() {
             </section>
 
             <section className={styles.section}>
-              <h3 className={styles.heading}>データのエクスポート/インポート</h3>
+              <h3 className={styles.heading}>
+                データのエクスポート/インポート
+              </h3>
               <p>
                 エクスポート機能ですべてのデータをJSON形式でダウンロードできます。
                 インポート機能でJSONファイルからデータを復元できます。

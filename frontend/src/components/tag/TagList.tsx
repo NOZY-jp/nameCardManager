@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./TagList.module.scss";
 
 interface TagItem {
