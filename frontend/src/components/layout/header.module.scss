@@ -1,0 +1,47 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 4rem;
+  padding: 0 $space-6;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  font-size: $text-lg;
+  font-weight: $weight-bold;
+  color: var(--color-foreground);
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+}
+
+.themeToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: $radius-md;
+  color: var(--color-foreground-muted);
+  transition: color $transition-fast, background-color $transition-fast;
+
+  &:hover {
+    color: var(--color-foreground);
+    background-color: var(--color-surface-hover);
+  }
+}

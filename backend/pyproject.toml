@@ -9,6 +9,10 @@ dependencies = [
   "httpx",
   "passlib[bcrypt]",
   "PyJWT",
+  "psycopg[binary]>=3.3.3",
+  "bcrypt<5",
+  "opencv-python-headless>=4.13.0.92",
+  "pillow>=12.1.1",
 ]
 name = "backend"
 version = "0.1.0"

@@ -1,0 +1,78 @@
+.authLayout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: $space-4;
+  background-color: var(--color-background);
+}
+
+.authContainer {
+  width: 100%;
+  max-width: 420px;
+}
+
+.authCard {
+  padding: $space-8;
+}
+
+.authHeader {
+  text-align: center;
+  margin-bottom: $space-6;
+}
+
+.authTitle {
+  font-size: $text-2xl;
+  font-weight: $weight-bold;
+  color: var(--color-foreground);
+  margin-bottom: $space-2;
+}
+
+.authDescription {
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+}
+
+.authForm {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.authError {
+  padding: $space-3;
+  border-radius: $radius-md;
+  background-color: color-mix(in srgb, var(--color-error) 10%, transparent);
+  color: var(--color-error);
+  font-size: $text-sm;
+  text-align: center;
+}
+
+.authFooter {
+  margin-top: $space-6;
+  text-align: center;
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+
+  a {
+    color: var(--color-accent);
+    font-weight: $weight-medium;
+    transition: color $transition-fast;
+
+    &:hover {
+      color: var(--color-accent-hover);
+      text-decoration: underline;
+    }
+  }
+}
+
+.submitButton {
+  width: 100%;
+  margin-top: $space-2;
+}

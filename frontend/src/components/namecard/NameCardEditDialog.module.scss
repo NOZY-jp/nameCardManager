@@ -1,0 +1,48 @@
+// ─── NameCardEditDialog ──────────────────────────────────
+
+.dialogContent {
+  max-width: 40rem;
+  width: 90%;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-4;
+
+  @media (max-width: $bp-sm) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.visualLabel {
+  font-size: $text-sm;
+  font-weight: $weight-medium;
+  color: var(--color-foreground);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $space-3;
+  padding-top: $space-4;
+  border-top: 1px solid var(--color-border);
+}
+
+.error {
+  font-size: $text-xs;
+  color: var(--color-error);
+  margin-top: $space-1;
+}

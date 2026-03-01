@@ -1,17 +1,14 @@
 import type { NextConfig } from "next";
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { join } from "node:path";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const stylesDir = join(process.cwd(), "src/styles");
 
 const nextConfig: NextConfig = {
-  /* config options here */
   sassOptions: {
-    includePaths: [path.join(__dirname, 'src/styles')],
-    prependData: `@use "variables" as *;`
+    includePaths: [stylesDir],
+    additionalData: `@use "${stylesDir}/_variables.scss" as *;`,
   },
-  output: 'standalone'
+  output: "standalone",
 };
 
 export default nextConfig;

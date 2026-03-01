@@ -1,0 +1,43 @@
+.page {
+  max-width: 48rem;
+  margin: $space-8 auto;
+  padding: 0 $space-4;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.heading {
+  font-size: $text-base;
+  font-weight: $weight-semibold;
+  color: var(--color-foreground);
+  padding-bottom: $space-1;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.section p {
+  font-size: $text-sm;
+  line-height: $leading-relaxed;
+  color: var(--color-foreground-muted);
+}
+
+.list {
+  list-style: disc;
+  padding-left: $space-5;
+  font-size: $text-sm;
+  line-height: $leading-relaxed;
+  color: var(--color-foreground-muted);
+
+  li {
+    margin-bottom: $space-1;
+  }
+}

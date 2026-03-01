@@ -1,0 +1,166 @@
+// ─── NameCardForm ─────────────────────────────────────────
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-4;
+
+  @media (max-width: $bp-sm) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.visualLabel {
+  font-size: $text-sm;
+  font-weight: $weight-medium;
+  color: var(--color-foreground);
+}
+
+.textarea {
+  width: 100%;
+  min-height: 5rem;
+  padding: $space-2 $space-3;
+  border: 1px solid var(--color-input-border);
+  border-radius: $radius-md;
+  background-color: var(--color-input-bg);
+  font-size: $text-sm;
+  line-height: $leading-normal;
+  color: var(--color-foreground);
+  resize: vertical;
+  transition: border-color $transition-fast;
+
+  &::placeholder {
+    color: var(--color-foreground-subtle);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-input-focus-ring);
+  }
+}
+
+.error {
+  font-size: $text-xs;
+  color: var(--color-error);
+}
+
+// ─── Contact Methods ─────────────────────────────────────
+
+.contactSection {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.contactHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.contactTitle {
+  font-size: $text-sm;
+  font-weight: $weight-semibold;
+  color: var(--color-foreground);
+}
+
+.contactRow {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-3;
+}
+
+.contactType {
+  flex-shrink: 0;
+  width: 8rem;
+}
+
+.contactValue {
+  flex: 1;
+}
+
+.contactDelete {
+  flex-shrink: 0;
+  margin-top: $space-1;
+}
+
+// ─── Selectors ───────────────────────────────────────────
+
+.selectorSection {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.selectorLabel {
+  font-size: $text-sm;
+  font-weight: $weight-semibold;
+  color: var(--color-foreground);
+}
+
+.selectedItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.selectedChip {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  font-size: $text-xs;
+  font-weight: $weight-medium;
+  padding: $space-1 $space-2;
+  border-radius: $radius-full;
+  background-color: var(--color-surface-hover);
+  color: var(--color-foreground);
+}
+
+.chipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: $radius-full;
+  font-size: $text-xs;
+  color: var(--color-foreground-muted);
+  transition: color $transition-fast;
+
+  &:hover {
+    color: var(--color-error);
+  }
+}
+
+// ─── Actions ─────────────────────────────────────────────
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $space-3;
+  padding-top: $space-4;
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: $bp-sm) {
+  .contactRow {
+    flex-direction: column;
+    gap: $space-2;
+  }
+
+  .contactType {
+    width: 100%;
+  }
+}

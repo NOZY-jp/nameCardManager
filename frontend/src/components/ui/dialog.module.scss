@@ -1,0 +1,78 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: $z-overlay;
+  background-color: var(--color-overlay);
+  animation: fadeIn $transition-normal;
+}
+
+.content {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: $z-modal;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 32rem;
+  max-height: 85vh;
+  overflow-y: auto;
+  border-radius: $radius-lg;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  box-shadow: $shadow-xl;
+  padding: $space-6;
+  animation: slideIn $transition-normal;
+}
+
+.close {
+  position: absolute;
+  top: $space-3;
+  right: $space-3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: $radius-sm;
+  color: var(--color-foreground-muted);
+  transition: color $transition-fast, background-color $transition-fast;
+
+  &:hover {
+    color: var(--color-foreground);
+    background-color: var(--color-surface-hover);
+  }
+}
+
+.title {
+  font-size: $text-lg;
+  font-weight: $weight-semibold;
+  line-height: $leading-tight;
+  color: var(--color-foreground);
+  margin-bottom: $space-2;
+}
+
+.description {
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+  margin-bottom: $space-4;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}

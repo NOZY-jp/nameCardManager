@@ -1,0 +1,123 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.tagGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.tagItem {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: $space-1 $space-3;
+  border-radius: $radius-full;
+  background-color: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  font-size: $text-sm;
+  transition: background-color $transition-fast;
+
+  &:hover {
+    background-color: var(--color-surface);
+    border-color: var(--color-border-hover);
+  }
+}
+
+.tagName {
+  cursor: default;
+  user-select: none;
+  color: var(--color-foreground);
+}
+
+.editInput {
+  width: 6rem;
+  padding: 0 $space-1;
+  border: 1px solid var(--color-input-border);
+  border-radius: $radius-sm;
+  background-color: var(--color-input-bg);
+  font-size: $text-sm;
+  color: var(--color-foreground);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-input-focus-ring);
+  }
+}
+
+.deleteButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: $radius-full;
+  color: var(--color-foreground-muted);
+  transition: background-color $transition-fast, color $transition-fast;
+
+  &:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--color-error);
+  }
+}
+
+.emptyState {
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+  text-align: center;
+  padding: $space-8 0;
+}
+
+.addSection {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+}
+
+.addInput {
+  flex: 1;
+  height: 2rem;
+  padding: $space-1 $space-2;
+  border: 1px solid var(--color-input-border);
+  border-radius: $radius-sm;
+  background-color: var(--color-input-bg);
+  font-size: $text-sm;
+  color: var(--color-foreground);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-input-focus-ring);
+  }
+}
+
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: $space-1 $space-3;
+  height: 2rem;
+  border-radius: $radius-sm;
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+  font-size: $text-sm;
+  font-weight: $weight-medium;
+  transition: background-color $transition-fast;
+
+  &:hover {
+    background-color: var(--color-primary-hover);
+  }
+}
+
+.errorMessage {
+  font-size: $text-xs;
+  color: var(--color-error);
+}

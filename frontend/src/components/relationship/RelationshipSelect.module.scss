@@ -1,0 +1,164 @@
+// ─── RelationshipSelect ──────────────────────────────────
+
+.wrapper {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 2.5rem;
+  padding: $space-2 $space-3;
+  border: 1px solid var(--color-input-border);
+  border-radius: $radius-md;
+  background-color: var(--color-input-bg);
+  font-size: $text-sm;
+  color: var(--color-foreground);
+  cursor: pointer;
+  transition: border-color $transition-fast;
+
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  &:hover {
+    border-color: var(--color-border-hover);
+  }
+
+  &[data-state="open"] {
+    border-color: var(--color-input-focus-ring);
+  }
+}
+
+.triggerIcon {
+  width: 1rem;
+  height: 1rem;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.placeholder {
+  color: var(--color-foreground-subtle);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: $z-dropdown;
+  width: 100%;
+  min-width: 12rem;
+  max-height: 15rem;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: $radius-md;
+  background-color: var(--color-surface);
+  box-shadow: $shadow-md;
+  padding: $space-1;
+  animation: slideDown 150ms ease;
+}
+
+// ─── Tree Nodes ──────────────────────────────────────────
+
+.treeNode {
+  display: flex;
+  flex-direction: column;
+}
+
+.nodeRow {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+}
+
+.expandButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: $radius-sm;
+  font-size: $text-xs;
+  color: var(--color-foreground-muted);
+  cursor: pointer;
+  transition: background-color $transition-fast, color $transition-fast;
+  flex-shrink: 0;
+
+  &:hover {
+    background-color: var(--color-surface-hover);
+    color: var(--color-foreground);
+  }
+}
+
+.expandIcon {
+  width: 0.75rem;
+  height: 0.75rem;
+  transition: transform $transition-fast;
+
+  &[data-expanded="true"] {
+    transform: rotate(90deg);
+  }
+}
+
+.expandSpacer {
+  width: 1.5rem;
+  flex-shrink: 0;
+}
+
+.nodeLabel {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  padding: $space-1 $space-2;
+  border-radius: $radius-sm;
+  font-size: $text-sm;
+  color: var(--color-foreground);
+  cursor: pointer;
+  transition: background-color $transition-fast;
+
+  &:hover {
+    background-color: var(--color-surface-hover);
+  }
+
+  &[data-selected="true"] {
+    background-color: var(--color-surface-hover);
+    font-weight: $weight-medium;
+  }
+}
+
+.children {
+  padding-left: $space-4;
+}
+
+// ─── Selected Display ────────────────────────────────────
+
+.selectedDisplay {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selectedText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

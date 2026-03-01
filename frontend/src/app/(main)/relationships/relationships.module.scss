@@ -1,0 +1,12 @@
+.page {
+  max-width: 48rem;
+  margin: $space-8 auto;
+  padding: 0 $space-4;
+}
+
+.loading {
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+  text-align: center;
+  padding: $space-8 0;
+}

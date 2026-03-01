@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     # --- Database ---
     database_url: str = Field(
-        default="postgresql://user:password@db:5432/myapp",
+        default="postgresql+psycopg://user:password@db:5432/myapp",
         description="PostgreSQL 接続 URL",
     )
 
@@ -35,6 +35,16 @@ class Settings(BaseSettings):
     )
     jwt_algorithm: str = Field(default="HS256", description="JWT アルゴリズム")
     jwt_expire_minutes: int = Field(default=60, description="JWT 有効期限（分）")
+
+    # --- Image ---
+    image_dir: str = Field(
+        default="./uploads/images",
+        description="画像保存ディレクトリ",
+    )
+    gemini_api_key: str = Field(
+        default="",
+        description="Gemini API キー",
+    )
 
     # --- CORS ---
     allowed_origins: list[str] = Field(

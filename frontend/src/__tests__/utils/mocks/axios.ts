@@ -1,6 +1,15 @@
 import { vi } from "vitest";
 
-const mockAxiosInstance = {
+/**
+ * Shared mock axios instance used by all API tests.
+ * This is returned by `axios.create()` in the `__mocks__/axios.ts` automatic mock.
+ *
+ * Test files should:
+ * 1. Call `vi.mock("axios")` at the top level (no factory needed — uses __mocks__/axios.ts)
+ * 2. Import `mockAxiosInstance` from this module to set up per-test return values
+ * 3. Call `resetAxiosMock()` in `beforeEach` to reset all method mocks
+ */
+export const mockAxiosInstance = {
   get: vi.fn(),
   post: vi.fn(),
   put: vi.fn(),
@@ -11,34 +20,18 @@ const mockAxiosInstance = {
     request: { use: vi.fn(), eject: vi.fn() },
     response: { use: vi.fn(), eject: vi.fn() },
   },
-  defaults: {
-    headers: {
-      common: {} as Record<string, string>,
-    },
-  },
+  defaults: { headers: { common: {} as Record<string, string> } },
 };
 
-function createAxiosMock() {
-  vi.mock("axios", () => ({
-    default: {
-      create: vi.fn(() => mockAxiosInstance),
-      isAxiosError: vi.fn((err: unknown) => {
-        return (
-          typeof err === "object" &&
-          err !== null &&
-          "isAxiosError" in err
-        );
-      }),
-    },
-  }));
-
-  return mockAxiosInstance;
-}
-
-function resetAxiosMock() {
-  for (const method of ["get", "post", "put", "patch", "delete", "request"] as const) {
+export function resetAxiosMock() {
+  for (const method of [
+    "get",
+    "post",
+    "put",
+    "patch",
+    "delete",
+    "request",
+  ] as const) {
     mockAxiosInstance[method].mockReset();
   }
 }
-
-export { createAxiosMock, mockAxiosInstance, resetAxiosMock };

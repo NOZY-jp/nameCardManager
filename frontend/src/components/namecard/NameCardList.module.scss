@@ -1,0 +1,159 @@
+// ─── NameCardList ─────────────────────────────────────────
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+}
+
+.sortGroup {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+}
+
+.sortLabel {
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+  white-space: nowrap;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-4;
+  padding: $space-16 $space-6;
+  text-align: center;
+  color: var(--color-foreground-muted);
+}
+
+.emptyIcon {
+  width: 4rem;
+  height: 4rem;
+  color: var(--color-foreground-subtle);
+  opacity: 0.5;
+}
+
+.emptyText {
+  font-size: $text-lg;
+  font-weight: $weight-medium;
+}
+
+// ─── Skeleton Loading ────────────────────────────────────
+
+.skeleton {
+  display: flex;
+  gap: $space-4;
+  padding: $space-4;
+  border-radius: $radius-lg;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeletonThumb {
+  flex-shrink: 0;
+  width: 5rem;
+  height: 3.125rem;
+  border-radius: $radius-md;
+  background-color: var(--color-surface-hover);
+}
+
+.skeletonBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.skeletonLine {
+  height: 0.875rem;
+  border-radius: $radius-sm;
+  background-color: var(--color-surface-hover);
+
+  &:first-child {
+    width: 40%;
+    height: 1rem;
+  }
+
+  &:nth-child(2) {
+    width: 60%;
+  }
+
+  &:nth-child(3) {
+    width: 30%;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+// ─── Pagination ──────────────────────────────────────────
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-1;
+  padding-top: $space-4;
+}
+
+.pageButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: $space-1 $space-2;
+  border-radius: $radius-md;
+  font-size: $text-sm;
+  font-weight: $weight-medium;
+  color: var(--color-foreground);
+  transition: background-color $transition-fast;
+
+  &:hover:not(:disabled) {
+    background-color: var(--color-surface-hover);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  &[data-active="true"] {
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+}
+
+@media (max-width: $bp-sm) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -36,7 +36,10 @@ services:
         condition: service_healthy
 
   db:
-    image: postgres:16-alpine
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile
+    command: postgres -c shared_preload_libraries=pg_bigm
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password

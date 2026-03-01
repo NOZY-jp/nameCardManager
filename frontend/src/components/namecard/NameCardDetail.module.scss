@@ -1,0 +1,215 @@
+// ─── NameCardDetail ───────────────────────────────────────
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-4;
+}
+
+.headerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.name {
+  font-size: $text-2xl;
+  font-weight: $weight-bold;
+  color: var(--color-foreground);
+  line-height: $leading-tight;
+}
+
+.nameKana {
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+}
+
+.headerActions {
+  display: flex;
+  gap: $space-2;
+  flex-shrink: 0;
+}
+
+// ─── Image Section ───────────────────────────────────────
+
+.imageSection {
+  border-radius: $radius-lg;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+
+  img {
+    width: 100%;
+    max-height: 20rem;
+    object-fit: contain;
+    background-color: var(--color-surface-hover);
+  }
+}
+
+// ─── Info Sections ───────────────────────────────────────
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-5;
+  border-radius: $radius-lg;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+}
+
+.sectionTitle {
+  font-size: $text-sm;
+  font-weight: $weight-semibold;
+  color: var(--color-foreground-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: $space-4;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.fieldLabel {
+  font-size: $text-xs;
+  font-weight: $weight-medium;
+  color: var(--color-foreground-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fieldValue {
+  font-size: $text-sm;
+  color: var(--color-foreground);
+  line-height: $leading-relaxed;
+  word-break: break-word;
+}
+
+// ─── Contact Methods ─────────────────────────────────────
+
+.contactList {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.contactItem {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-2 $space-3;
+  border-radius: $radius-md;
+  background-color: var(--color-surface-hover);
+  transition: background-color $transition-fast;
+}
+
+.contactType {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4rem;
+  padding: $space-1 $space-2;
+  border-radius: $radius-full;
+  font-size: $text-xs;
+  font-weight: $weight-semibold;
+  color: var(--color-accent);
+  background-color: rgba(233, 69, 96, 0.08);
+  text-transform: uppercase;
+}
+
+.contactValue {
+  font-size: $text-sm;
+  color: var(--color-foreground);
+}
+
+// ─── Tags & Relationships ────────────────────────────────
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  font-size: $text-sm;
+  font-weight: $weight-medium;
+  color: var(--color-accent);
+  background-color: rgba(233, 69, 96, 0.08);
+  padding: $space-1 $space-3;
+  border-radius: $radius-full;
+}
+
+.relationshipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.relationship {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+  background-color: var(--color-surface-hover);
+  padding: $space-1 $space-3;
+  border-radius: $radius-full;
+}
+
+// ─── Memo ────────────────────────────────────────────────
+
+.memo {
+  font-size: $text-sm;
+  color: var(--color-foreground);
+  line-height: $leading-relaxed;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+// ─── Dates ───────────────────────────────────────────────
+
+.dates {
+  display: flex;
+  gap: $space-6;
+  font-size: $text-xs;
+  color: var(--color-foreground-subtle);
+}
+
+// ─── Responsive ──────────────────────────────────────────
+
+@media (max-width: $bp-sm) {
+  .header {
+    flex-direction: column;
+  }
+
+  .headerActions {
+    width: 100%;
+  }
+
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+}

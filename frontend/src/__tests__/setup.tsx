@@ -1,28 +1,28 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
+import { resetRouterMock } from "@/__tests__/utils/mocks/router";
 
-// Cleanup after each test
+// biome-ignore lint: @testing-library/react requires jest global for fake-timer compat
+(globalThis as Record<string, unknown>).jest = vi;
+
 afterEach(() => {
   cleanup();
+  resetRouterMock();
 });
 
-// Mock next/navigation
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-    back: vi.fn(),
-    forward: vi.fn(),
-    refresh: vi.fn(),
-    prefetch: vi.fn(),
-  }),
-  useSearchParams: () => new URLSearchParams(),
-  usePathname: () => "/",
-  useParams: () => ({}),
-  redirect: vi.fn(),
-  notFound: vi.fn(),
-}));
+// Mock next/navigation (uses shared routerMock for stable spy references)
+vi.mock("next/navigation", async () => {
+  const { getRouterMock } = await import("@/__tests__/utils/mocks/router");
+  return {
+    useRouter: () => getRouterMock(),
+    useSearchParams: () => new URLSearchParams(),
+    usePathname: () => "/",
+    useParams: () => ({}),
+    redirect: vi.fn(),
+    notFound: vi.fn(),
+  };
+});
 
 // Mock next/image
 vi.mock("next/image", () => ({

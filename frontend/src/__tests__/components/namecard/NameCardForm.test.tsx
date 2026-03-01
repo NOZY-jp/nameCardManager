@@ -145,7 +145,7 @@ describe("NameCardForm", () => {
 
     for (const type of CONTACT_METHOD_TYPES) {
       expect(
-        screen.getByRole("option", { name: new RegExp(type, "i") }),
+        screen.getByRole("option", { name: new RegExp(`^${type}$`, "i") }),
       ).toBeInTheDocument();
     }
   });

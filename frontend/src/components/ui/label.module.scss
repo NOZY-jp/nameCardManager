@@ -1,0 +1,12 @@
+.label {
+  font-size: $text-sm;
+  font-weight: $weight-medium;
+  color: var(--color-foreground);
+  line-height: $leading-normal;
+  cursor: default;
+
+  &[data-required="true"]::after {
+    content: " *";
+    color: var(--color-error);
+  }
+}

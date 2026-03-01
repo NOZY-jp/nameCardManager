@@ -1,0 +1,171 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.tree {
+  display: flex;
+  flex-direction: column;
+}
+
+.nodeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-1 $space-2;
+  border-radius: $radius-sm;
+  transition: background-color $transition-fast;
+
+  &:hover {
+    background-color: var(--color-surface-hover);
+  }
+}
+
+.nodeToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  font-size: $text-sm;
+  color: var(--color-foreground);
+  min-height: 1.75rem;
+  text-align: left;
+  flex: 1;
+}
+
+.chevron {
+  flex-shrink: 0;
+  transition: transform $transition-fast;
+  color: var(--color-foreground-muted);
+}
+
+.chevronExpanded {
+  transform: rotate(90deg);
+}
+
+.nodeName {
+  cursor: default;
+  user-select: none;
+}
+
+.editInput {
+  width: auto;
+  min-width: 6rem;
+  padding: $space-1 $space-2;
+  border: 1px solid var(--color-input-border);
+  border-radius: $radius-sm;
+  background-color: var(--color-input-bg);
+  font-size: $text-sm;
+  color: var(--color-foreground);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-input-focus-ring);
+  }
+}
+
+.nodeActions {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+}
+
+.deleteButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: $radius-sm;
+  color: var(--color-foreground-muted);
+  transition: background-color $transition-fast, color $transition-fast;
+
+  &:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--color-error);
+  }
+}
+
+.childrenContainer {
+  // Children are indented via inline paddingLeft
+}
+
+.emptyState {
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+  text-align: center;
+  padding: $space-8 0;
+}
+
+// ─── Add Form ─────────────────────────────────────────
+
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: $space-2 $space-3;
+  border-radius: $radius-md;
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+  transition: background-color $transition-fast, color $transition-fast;
+
+  &:hover {
+    background-color: var(--color-surface-hover);
+    color: var(--color-foreground);
+  }
+}
+
+.addForm {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 0;
+}
+
+.addInput {
+  flex: 1;
+  height: 2rem;
+  padding: $space-1 $space-2;
+  border: 1px solid var(--color-input-border);
+  border-radius: $radius-sm;
+  background-color: var(--color-input-bg);
+  font-size: $text-sm;
+  color: var(--color-foreground);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-input-focus-ring);
+  }
+}
+
+.confirmButton {
+  display: inline-flex;
+  align-items: center;
+  padding: $space-1 $space-3;
+  height: 2rem;
+  border-radius: $radius-sm;
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+  font-size: $text-sm;
+  font-weight: $weight-medium;
+  transition: background-color $transition-fast;
+
+  &:hover {
+    background-color: var(--color-primary-hover);
+  }
+}
+
+.cancelButton {
+  display: inline-flex;
+  align-items: center;
+  padding: $space-1 $space-3;
+  height: 2rem;
+  border-radius: $radius-sm;
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+  transition: background-color $transition-fast;
+
+  &:hover {
+    background-color: var(--color-surface-hover);
+  }
+}

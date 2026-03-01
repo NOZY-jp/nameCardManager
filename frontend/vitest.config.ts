@@ -9,6 +9,13 @@ export default defineConfig({
       "@": resolve(__dirname, "./src"),
     },
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@use "${resolve(__dirname, "src/styles/_variables.scss")}" as *;`,
+      },
+    },
+  },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/__tests__/setup.tsx"],

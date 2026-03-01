@@ -268,7 +268,7 @@ Wave 3（統合・CI）:
 
 ### Wave 1: API設計・テスト先行
 
-- [ ] 1. Alembic 導入 + DB マイグレーション基盤
+- [x] 1. Alembic 導入 + DB マイグレーション基盤
 
   **What to do**:
   - Alembic 初期化
@@ -305,7 +305,7 @@ Wave 3（統合・CI）:
 
 ---
 
-- [ ] 2. Pydantic スキーマ定義
+- [x] 2. Pydantic スキーマ定義
 
   **What to do**:
   - NameCard, Relationship, Tag, ContactMethod の Request/Response スキーマを定義
@@ -346,7 +346,7 @@ Wave 3（統合・CI）:
 
 ---
 
-- [ ] 3. 全エンドポイントのテスト作成（テストファースト）
+- [x] 3. 全エンドポイントのテスト作成（テストファースト）
 
   **What to do**:
   - 名刺 CRUD テスト
@@ -393,7 +393,7 @@ Wave 3（統合・CI）:
 
 ### Wave 2: バックエンド実装
 
-- [ ] 4. 名刺 CRUD API
+- [x] 4. 名刺 CRUD API
 
   **What to do**:
   - GET/POST/PATCH/DELETE `/api/v1/namecards` エンドポイント実装
@@ -427,7 +427,7 @@ Wave 3（統合・CI）:
 
 ---
 
-- [ ] 5. Relationship CRUD API
+- [x] 5. Relationship CRUD API
 
   **What to do**:
   - 組織階層の CRUD エンドポイント
@@ -454,7 +454,7 @@ Wave 3（統合・CI）:
 
 ---
 
-- [ ] 6. Tag CRUD API
+- [x] 6. Tag CRUD API
 
   **What to do**:
   - タグの CRUD エンドポイント
@@ -478,7 +478,7 @@ Wave 3（統合・CI）:
 
 ---
 
-- [ ] 7. pg_bigm 検索 API
+- [x] 7. pg_bigm 検索 API
 
   **What to do**:
   - キーワード横断検索
@@ -504,7 +504,7 @@ Wave 3（統合・CI）:
 
 ---
 
-- [ ] 8. 画像処理 + OCR API
+- [x] 8. 画像処理 + OCR API
 
   **What to do**:
   - 2段階アップロードフロー:
@@ -538,7 +538,7 @@ Wave 3（統合・CI）:
 
 ---
 
-- [ ] 9. JSON エクスポート/インポート API
+- [x] 9. JSON エクスポート/インポート API
 
   **What to do**:
   - JSON エクスポート（全名刺+Relationship+Tag をネスト構造で出力）
@@ -568,7 +568,7 @@ Wave 3（統合・CI）:
 
 ### Wave 2: フロントエンド実装
 
-- [ ] 10. Next.js プロジェクト基盤 + 認証 UI
+- [x] 10. Next.js プロジェクト基盤 + 認証 UI
 
   **What to do**:
   - Next.js **SSR + App Router** プロジェクト構成
@@ -632,7 +632,7 @@ Wave 3（統合・CI）:
 
 ---
 
-- [ ] 11. 名刺一覧 + 詳細表示
+- [x] 11. 名刺一覧 + 詳細表示
 
   **What to do**:
   - 名刺一覧（カード/リスト表示切替）— **NameCardList**, **NameCardItem** コンポーネント
@@ -663,7 +663,7 @@ Wave 3（統合・CI）:
 
 ---
 
-- [ ] 12. 名刺登録・編集フォーム
+- [x] 12. 名刺登録・編集フォーム
 
   **What to do**:
   - **NameCardForm** コンポーネント（**React Hook Form** + **Zod** バリデーション）
@@ -699,7 +699,7 @@ Wave 3（統合・CI）:
 
 ---
 
-- [ ] 13. カメラ撮影 + 四隅選択 + OCR
+- [x] 13. カメラ撮影 + 四隅選択 + OCR
 
   **What to do**:
   - **CameraCapture** コンポーネント: カメラガイド枠（名刺サイズ）、撮影機能
@@ -728,7 +728,7 @@ Wave 3（統合・CI）:
 
 ---
 
-- [ ] 14. 検索 UI + 管理 UI + JSON UI + ヘルプ
+- [x] 14. 検索 UI + 管理 UI + JSON UI + ヘルプ
 
   **What to do**:
   - **SearchBar** コンポーネント（リアルタイム検索、debounce）
