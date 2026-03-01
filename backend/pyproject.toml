@@ -29,7 +29,7 @@ dev = ["ruff", "basedpyright", "pytest>=8.0"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
-python_files = ["*_test.py"]
+python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-ra --tb=short"
