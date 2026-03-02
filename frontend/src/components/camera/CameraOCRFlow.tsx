@@ -2,6 +2,10 @@
 
 import { useCallback, useState } from "react";
 import { imageApi } from "@/lib/api/images";
+import {
+  CONTACT_METHOD_TYPES,
+  type ContactMethodFormData,
+} from "@/lib/schemas/contact-method";
 import type { NamecardCreateFormData } from "@/lib/schemas/namecard";
 import { CameraCapture } from "./CameraCapture";
 import styles from "./CameraOCRFlow.module.scss";
@@ -56,17 +60,23 @@ export function CameraOCRFlow({ onComplete, onCancel }: CameraOCRFlowProps) {
           department: ocr_result.department ?? "",
           position: ocr_result.position ?? "",
           memo: ocr_result.memo ?? "",
-          contact_methods: ocr_result.contact_methods?.map((cm) => ({
-            type: cm.type as
-              | "email"
-              | "phone"
-              | "mobile"
-              | "fax"
-              | "url"
-              | "other",
-            value: cm.value,
-            is_primary: false,
-          })),
+          contact_methods: ocr_result.contact_methods
+            ?.map((cm) => {
+              const type = cm.type as ContactMethodFormData["type"];
+              if (
+                !(CONTACT_METHOD_TYPES as readonly string[]).includes(cm.type)
+              ) {
+                return null;
+              }
+              return {
+                type,
+                value: cm.value,
+                is_primary: false,
+              };
+            })
+            .filter(
+              (cm): cm is NonNullable<typeof cm> => cm !== null,
+            ),
         };
 
         onComplete(formData);

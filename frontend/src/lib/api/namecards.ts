@@ -119,8 +119,8 @@ export async function deleteNameCard(id: string | number): Promise<void> {
 interface ListParams {
   page?: number;
   perPage?: number;
-  sort_by?: string;
-  sort_order?: string;
+  sort_by?: GetNameCardsParams["sort_by"];
+  sort_order?: GetNameCardsParams["sort_order"];
   search?: string;
 }
 
@@ -131,8 +131,8 @@ export const namecardApi = {
   },
   get: getNameCard,
   create: async (data: Record<string, unknown>) =>
-    createNameCard(data as NameCardCreateData),
+    createNameCard(data as unknown as NameCardCreateData),
   update: async (id: number | string, data: Record<string, unknown>) =>
-    updateNameCard(id, data as NameCardUpdateData),
+    updateNameCard(id, data as unknown as NameCardUpdateData),
   delete: async (id: number | string) => deleteNameCard(id),
 };

@@ -38,7 +38,7 @@ tasks:
 
   install:
     desc: 📦 全体の依存関係をインストール
-    deps:
+    cmds:
       - task: backend:install
       - task: frontend:install
 
