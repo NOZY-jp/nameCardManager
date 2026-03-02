@@ -150,9 +150,12 @@ async def import_json(
             last_name=nc_data.get("last_name", ""),
             first_name_kana=nc_data.get("first_name_kana"),
             last_name_kana=nc_data.get("last_name_kana"),
+            company_name=nc_data.get("company_name"),
+            department=nc_data.get("department"),
+            position=nc_data.get("position"),
             image_path=nc_data.get("image_path"),
             met_notes=nc_data.get("met_notes"),
-            notes=nc_data.get("notes"),
+            memo=nc_data.get("memo"),
         )
         db.add(nc)
         db.flush()

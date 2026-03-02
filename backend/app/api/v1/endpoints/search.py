@@ -65,9 +65,12 @@ def _build_namecard_response(nc: NameCard, db: DbSession) -> dict:
         "last_name": nc.last_name,
         "first_name_kana": nc.first_name_kana,
         "last_name_kana": nc.last_name_kana,
+        "company_name": nc.company_name,
+        "department": nc.department,
+        "position": nc.position,
         "image_path": nc.image_path,
         "met_notes": nc.met_notes,
-        "notes": nc.notes,
+        "memo": nc.memo,
         "contact_methods": [
             ContactMethodResponse(
                 id=cm.id,
@@ -121,7 +124,7 @@ def search_namecards(
     """キーワード横断検索（pg_bigm 使用）。
 
     テキスト検索対象:
-    - name_cards: first_name, last_name, first_name_kana, last_name_kana, notes, met_notes
+    - name_cards: first_name, last_name, first_name_kana, last_name_kana, memo, met_notes
     - relationships: full_path（祖先含む再帰 CTE で name を検索）
     - contact_methods: value (via join)
     """
@@ -154,7 +157,7 @@ def search_namecards(
             NameCard.last_name.ilike(like_pattern),
             NameCard.first_name_kana.ilike(like_pattern),
             NameCard.last_name_kana.ilike(like_pattern),
-            NameCard.notes.ilike(like_pattern),
+            NameCard.memo.ilike(like_pattern),
             NameCard.met_notes.ilike(like_pattern),
         ]
 

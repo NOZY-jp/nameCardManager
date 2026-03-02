@@ -48,9 +48,12 @@ def _build_namecard_response(nc: NameCard, db: DbSession) -> dict:
         "last_name": nc.last_name,
         "first_name_kana": nc.first_name_kana,
         "last_name_kana": nc.last_name_kana,
+        "company_name": nc.company_name,
+        "department": nc.department,
+        "position": nc.position,
         "image_path": nc.image_path,
         "met_notes": nc.met_notes,
-        "notes": nc.notes,
+        "memo": nc.memo,
         "contact_methods": [
             ContactMethodResponse(
                 id=cm.id,
@@ -240,9 +243,12 @@ def create_namecard(
         last_name=body.last_name,
         first_name_kana=body.first_name_kana,
         last_name_kana=body.last_name_kana,
+        company_name=body.company_name,
+        department=body.department,
+        position=body.position,
         image_path=body.image_path,
         met_notes=body.met_notes,
-        notes=body.notes,
+        memo=body.memo,
     )
     db.add(nc)
     db.flush()
@@ -299,9 +305,12 @@ def update_namecard(
         "last_name",
         "first_name_kana",
         "last_name_kana",
+        "company_name",
+        "department",
+        "position",
         "image_path",
         "met_notes",
-        "notes",
+        "memo",
     ):
         if field in update_data:
             setattr(nc, field, update_data[field])

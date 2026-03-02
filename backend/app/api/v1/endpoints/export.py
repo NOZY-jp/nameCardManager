@@ -54,9 +54,12 @@ def _build_namecard_response(nc: NameCard, db: Session) -> dict:
         "last_name": nc.last_name,
         "first_name_kana": nc.first_name_kana,
         "last_name_kana": nc.last_name_kana,
+        "company_name": nc.company_name,
+        "department": nc.department,
+        "position": nc.position,
         "image_path": nc.image_path,
         "met_notes": nc.met_notes,
-        "notes": nc.notes,
+        "memo": nc.memo,
         "contact_methods": [
             ContactMethodResponse(
                 id=cm.id,
