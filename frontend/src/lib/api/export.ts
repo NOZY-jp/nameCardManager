@@ -12,6 +12,6 @@ export interface ExportData {
 // ─── API Functions ───────────────────────────────────────
 
 export async function exportJSON(): Promise<ExportData> {
-  const response = await apiClient.get<ExportData>("/export");
+  const response = await apiClient.get<ExportData>("/export/json");
   return response.data;
 }
