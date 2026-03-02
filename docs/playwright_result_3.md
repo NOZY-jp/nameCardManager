@@ -955,3 +955,108 @@ const toggleTheme = () => {
 
 *修正完了日時: 2026年3月2日*
 *修正者: Sisyphus-Junior Agent*
+
+---
+
+# OCR機能の導線改善
+
+## 修正情報
+- 日時: 2026-03-02
+- 修正者: Sisyphus-Junior Agent
+- 対象: `/namecards/new` ページでOCR機能にアクセスする導線が不足していた問題
+
+---
+
+## 修正前の問題
+
+1. `CameraOCRFlow` がどこからも使われていない（dead code）
+2. `ImageUploadOCR` に「カメラで撮影」ボタンがない
+3. 「画像から登録 vs 手入力」の明示的な選択UIがない
+4. OCRセクションとフォームが同時表示され、ユーザーに選択を促さない
+
+---
+
+## 実施した修正
+
+### 変更ファイル
+
+#### 1. `frontend/src/app/(main)/namecards/new/page.tsx`
+- `InputMode` 型を追加: `"choose" | "image" | "camera" | "manual"`
+- 初期状態 `"choose"` で3つの選択カードを表示:
+  - **画像を選択** → `ImageUploadOCR` コンポーネント
+  - **写真を撮影** → `CameraOCRFlow` コンポーネント（full-screen）
+  - **手入力** → `NameCardForm` コンポーネント
+- OCR完了時は自動的に `"manual"` モードに遷移しフォームにデータ反映
+- 各モードに「戻る」ボタンを追加し、選択画面に戻れるように
+
+#### 2. `frontend/src/app/(main)/namecards/new/new.module.scss`
+- `.modeSelector`, `.modeSelectorLabel`, `.modeCards`, `.modeCard` スタイルを追加
+- `.modeCardTitle`, `.modeCardDesc` でカード内のタイトル・説明を装飾
+- `.sectionHeader`, `.backToChoose` で「戻る」ボタンのスタイルを追加
+- モバイル対応: `@media (max-width: $bp-sm)` で1カラムレイアウト
+
+---
+
+## Playwright テスト結果
+
+### テスト環境
+- Docker コンテナ: db, backend, frontend すべて起動済み
+- フロントエンド: `task clean-start` + `docker compose up -d --build` でリビルド済み
+
+### テスト1: 3択モードセレクターの表示
+
+| 確認項目 | 結果 | 詳細 |
+|---------|------|------|
+| `登録方法を選択してください` テキスト | ✅ あり | `data-testid="mode-selector"` 内 |
+| 「画像を選択」カード | ✅ あり | `data-testid="mode-image"` |
+| 「写真を撮影」カード | ✅ あり | `data-testid="mode-camera"` |
+| 「手入力」カード | ✅ あり | `data-testid="mode-manual"` |
+| フォームが非表示 | ✅ 確認 | choose モードではフォーム要素なし |
+
+### テスト2: 「画像を選択」→ ImageUploadOCR
+
+| 確認項目 | 結果 | 詳細 |
+|---------|------|------|
+| クリック後に `ImageUploadOCR` 表示 | ✅ あり | 「画像をアップロード」ボタン表示 |
+| 「戻る」ボタン表示 | ✅ あり | `data-testid="back-to-choose"` |
+| ファイル選択ダイアログ起動 | ✅ 確認 | ボタンクリックでファイルチューザー表示 |
+| 画像アップロード後に CornerSelector 表示 | ✅ 確認 | 「確定」「リセット」「戻る」ボタン表示 |
+
+### テスト3: 「手入力」→ NameCardForm
+
+| 確認項目 | 結果 | 詳細 |
+|---------|------|------|
+| クリック後にフォーム表示 | ✅ あり | 姓、名、カナ、会社名等のフィールド表示 |
+| 「戻る」ボタン表示 | ✅ あり | `data-testid="back-to-choose"` |
+| 「登録」ボタン表示 | ✅ あり | フォーム送信ボタン |
+| 「キャンセル」ボタン表示 | ✅ あり | `/namecards` へ遷移 |
+
+### テスト4: 「戻る」ボタンで選択画面に復帰
+
+| 確認項目 | 結果 | 詳細 |
+|---------|------|------|
+| 手入力モードから「戻る」 | ✅ 確認 | 3択セレクター画面に復帰 |
+| 3択カードが再表示される | ✅ 確認 | 画像を選択、写真を撮影、手入力の3カード |
+
+---
+
+## スクリーンショット
+- `docs/screenshot_new_mode_selector.png` — 3択モードセレクター
+- `docs/screenshot_new_corner_selector.png` — 画像アップロード後の四隅選択
+- `docs/screenshot_new_manual_mode.png` — 手入力フォーム
+
+---
+
+## フロー図（修正後）
+
+```
+/namecards/new にアクセス
+  ↓
+[3択モードセレクター]
+  ├── 「画像を選択」 → ImageUploadOCR → CornerSelector → OCR → フォーム仮入力
+  ├── 「写真を撮影」 → CameraOCRFlow（full-screen） → CornerSelector → OCR → フォーム仮入力
+  └── 「手入力」 → NameCardForm（空フォーム）
+```
+
+*修正完了日時: 2026年3月2日*
+*修正者: Sisyphus-Junior Agent*

@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Camera, ImageIcon, PenLine } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { ImageUploadOCR } from "@/components/camera";
+import { CameraOCRFlow, ImageUploadOCR } from "@/components/camera";
 import { NameCardForm } from "@/components/namecard";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
@@ -14,9 +14,12 @@ import { getTags } from "@/lib/api/tags";
 import type { NamecardCreateFormData } from "@/lib/schemas/namecard";
 import styles from "./new.module.scss";
 
+type InputMode = "choose" | "image" | "camera" | "manual";
+
 export default function NewNameCardPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [mode, setMode] = useState<InputMode>("choose");
   const [relationships, setRelationships] = useState<
     Array<{
       id: string;
@@ -53,6 +56,7 @@ export default function NewNameCardPage() {
     (data: Partial<NamecardCreateFormData>) => {
       setOcrDefaults(data);
       setFormKey((prev) => prev + 1);
+      setMode("manual");
       toast({ type: "success", message: "OCR結果をフォームに反映しました" });
     },
     [toast],
@@ -71,6 +75,20 @@ export default function NewNameCardPage() {
     }
   };
 
+  const handleBackToChoose = useCallback(() => {
+    setMode("choose");
+  }, []);
+
+  // Camera flow: full-screen takeover
+  if (mode === "camera") {
+    return (
+      <CameraOCRFlow
+        onComplete={handleOCRComplete}
+        onCancel={handleBackToChoose}
+      />
+    );
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
@@ -81,26 +99,100 @@ export default function NewNameCardPage() {
         <h1 className={styles.title}>名刺を新規登録</h1>
       </div>
 
-      <div className={styles.ocrSection}>
-        <ImageUploadOCR onComplete={handleOCRComplete} />
-      </div>
+      {mode === "choose" && (
+        <div className={styles.modeSelector} data-testid="mode-selector">
+          <p className={styles.modeSelectorLabel}>登録方法を選択してください</p>
+          <div className={styles.modeCards}>
+            <button
+              type="button"
+              className={styles.modeCard}
+              onClick={() => setMode("image")}
+              data-testid="mode-image"
+            >
+              <ImageIcon size={28} />
+              <span className={styles.modeCardTitle}>画像を選択</span>
+              <span className={styles.modeCardDesc}>
+                保存済みの画像からOCR読み取り
+              </span>
+            </button>
 
-      <div className={styles.formContainer}>
-        <NameCardForm
-          key={formKey}
-          defaultValues={ocrDefaults ?? undefined}
-          relationships={relationships}
-          tags={tags}
-          onSubmit={handleSubmit}
-          submitLabel={submitting ? "登録中..." : "登録"}
-        />
+            <button
+              type="button"
+              className={styles.modeCard}
+              onClick={() => setMode("camera")}
+              data-testid="mode-camera"
+            >
+              <Camera size={28} />
+              <span className={styles.modeCardTitle}>写真を撮影</span>
+              <span className={styles.modeCardDesc}>
+                カメラで撮影してOCR読み取り
+              </span>
+            </button>
 
-        <div className={styles.cancelRow}>
-          <Button variant="outline" onClick={() => router.push("/namecards")}>
-            キャンセル
-          </Button>
+            <button
+              type="button"
+              className={styles.modeCard}
+              onClick={() => setMode("manual")}
+              data-testid="mode-manual"
+            >
+              <PenLine size={28} />
+              <span className={styles.modeCardTitle}>手入力</span>
+              <span className={styles.modeCardDesc}>
+                フォームに直接入力して登録
+              </span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {mode === "image" && (
+        <div className={styles.ocrSection}>
+          <div className={styles.sectionHeader}>
+            <button
+              type="button"
+              className={styles.backToChoose}
+              onClick={handleBackToChoose}
+              data-testid="back-to-choose"
+            >
+              <ArrowLeft size={16} />
+              戻る
+            </button>
+          </div>
+          <ImageUploadOCR onComplete={handleOCRComplete} />
+        </div>
+      )}
+
+      {mode === "manual" && (
+        <div className={styles.formContainer}>
+          {!ocrDefaults && (
+            <div className={styles.sectionHeader}>
+              <button
+                type="button"
+                className={styles.backToChoose}
+                onClick={handleBackToChoose}
+                data-testid="back-to-choose"
+              >
+                <ArrowLeft size={16} />
+                戻る
+              </button>
+            </div>
+          )}
+          <NameCardForm
+            key={formKey}
+            defaultValues={ocrDefaults ?? undefined}
+            relationships={relationships}
+            tags={tags}
+            onSubmit={handleSubmit}
+            submitLabel={submitting ? "登録中..." : "登録"}
+          />
+
+          <div className={styles.cancelRow}>
+            <Button variant="outline" onClick={() => router.push("/namecards")}>
+              キャンセル
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

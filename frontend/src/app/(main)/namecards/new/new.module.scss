@@ -29,6 +29,77 @@
   color: var(--color-foreground);
 }
 
+.modeSelector {
+  margin-bottom: $space-6;
+}
+
+.modeSelectorLabel {
+  font-size: $text-base;
+  font-weight: $weight-medium;
+  color: var(--color-foreground-muted);
+  margin-bottom: $space-4;
+}
+
+.modeCards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $space-4;
+}
+
+.modeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-6 $space-4;
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: $radius-lg;
+  cursor: pointer;
+  transition:
+    border-color $transition-fast,
+    box-shadow $transition-fast;
+  color: var(--color-foreground);
+
+  &:hover {
+    border-color: var(--color-accent, #e94560);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.modeCardTitle {
+  font-size: $text-base;
+  font-weight: $weight-semibold;
+}
+
+.modeCardDesc {
+  font-size: $text-xs;
+  color: var(--color-foreground-muted);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.sectionHeader {
+  margin-bottom: $space-4;
+}
+
+.backToChoose {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color $transition-fast;
+
+  &:hover {
+    color: var(--color-foreground);
+  }
+}
+
 .ocrSection {
   margin-bottom: $space-6;
 }
@@ -51,6 +122,10 @@
 @media (max-width: $bp-sm) {
   .page {
     padding: $space-4;
+  }
+
+  .modeCards {
+    grid-template-columns: 1fr;
   }
 
   .formContainer {
