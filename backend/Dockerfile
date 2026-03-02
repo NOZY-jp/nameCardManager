@@ -14,10 +14,10 @@ FROM python:3.14-slim-bookworm AS dev
 ENV PATH="/app/.venv/bin:$PATH"
 WORKDIR /app
 COPY --from=builder /app /app
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--http", "app.core.http_protocol:HttpToolsProtocolWithUTF8", "--reload"]
 
 FROM python:3.14-slim-bookworm AS prod
 ENV PATH="/app/.venv/bin:$PATH"
 WORKDIR /app
 COPY --from=builder /app /app
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--http", "app.core.http_protocol:HttpToolsProtocolWithUTF8"]

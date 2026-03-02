@@ -9,12 +9,12 @@ tasks:
   dev:
     desc: FastAPIサーバーの起動
     cmds:
-      - "uv run fastapi dev app/main.py"
+      - "uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --http app.core.http_protocol:HttpToolsProtocolWithUTF8 --reload"
 
   gen-types:
     desc: (内部用) サーバーを起動してOpenAPIを公開
     cmds:
-      - "uv run fastapi dev app/main.py --port 8000"
+      - "uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --http app.core.http_protocol:HttpToolsProtocolWithUTF8 --reload"
 
   migrate:
     desc: マイグレーションを最新まで適用
