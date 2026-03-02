@@ -178,9 +178,12 @@ class NameCardCreate(BaseModel):
     last_name: str
     first_name_kana: str | None = None
     last_name_kana: str | None = None
+    company_name: str | None = None
+    department: str | None = None
+    position: str | None = None
     image_path: str | None = None
     met_notes: str | None = None
-    notes: str | None = None
+    memo: str | None = None
     contact_methods: list[ContactMethodCreate] = []
     relationship_ids: list[int] = []
     tag_ids: list[int] = []
@@ -193,9 +196,12 @@ class NameCardUpdate(BaseModel):
     last_name: str | None = None
     first_name_kana: str | None = None
     last_name_kana: str | None = None
+    company_name: str | None = None
+    department: str | None = None
+    position: str | None = None
     image_path: str | None = None
     met_notes: str | None = None
-    notes: str | None = None
+    memo: str | None = None
     contact_methods: list[ContactMethodCreate] | None = None
     relationship_ids: list[int] | None = None
     tag_ids: list[int] | None = None
@@ -210,9 +216,12 @@ class NameCardResponse(BaseModel):
     last_name: str
     first_name_kana: str | None
     last_name_kana: str | None
+    company_name: str | None
+    department: str | None
+    position: str | None
     image_path: str | None
     met_notes: str | None
-    notes: str | None
+    memo: str | None
     contact_methods: list[ContactMethodResponse]
     relationships: list[RelationshipResponse]
     tags: list[TagResponse]

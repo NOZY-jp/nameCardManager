@@ -250,9 +250,12 @@ class NameCard(Base):
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     first_name_kana: Mapped[str | None] = mapped_column(String(100))
     last_name_kana: Mapped[str | None] = mapped_column(String(100))
+    company_name: Mapped[str | None] = mapped_column(String(200))
+    department: Mapped[str | None] = mapped_column(String(200))
+    position: Mapped[str | None] = mapped_column(String(200))
     image_path: Mapped[str | None] = mapped_column(String(500))
     met_notes: Mapped[str | None] = mapped_column(Text, comment="どこで出会ったか")
-    notes: Mapped[str | None] = mapped_column(Text)
+    memo: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
