@@ -56,6 +56,9 @@ export function Header() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -122,14 +125,24 @@ export function Header() {
         </nav>
 
         <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.themeToggle}
-            onClick={toggleTheme}
-            aria-label="テーマ切替"
-          >
-            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+          {mounted ? (
+            <button
+              type="button"
+              className={styles.themeToggle}
+              onClick={toggleTheme}
+              aria-label="テーマ切替"
+            >
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={styles.themeToggle}
+              aria-label="テーマ切替"
+            >
+              <span className={styles.themeTogglePlaceholder} />
+            </button>
+          )}
 
           {user && (
             <Button variant="ghost" size="sm" onClick={logout}>
