@@ -91,25 +91,23 @@ export default function ImportExportPage() {
               <p className={styles.sectionDesc}>
                 JSONファイルからデータを読み込みます。
               </p>
-              <label className={styles.uploadLabel}>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".json"
-                  className={styles.fileInput}
-                  onChange={handleImport}
-                  disabled={importing}
-                />
-                <Button
-                  variant="outline"
-                  loading={importing}
-                  onClick={() => fileRef.current?.click()}
-                  type="button"
-                >
-                  <Upload size={16} />
-                  インポート
-                </Button>
-              </label>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".json"
+                className={styles.fileInput}
+                onChange={handleImport}
+                disabled={importing}
+              />
+              <Button
+                variant="outline"
+                loading={importing}
+                onClick={() => fileRef.current?.click()}
+                type="button"
+              >
+                <Upload size={16} />
+                インポート
+              </Button>
             </div>
           </div>
 
