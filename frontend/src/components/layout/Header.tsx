@@ -8,7 +8,6 @@ import {
   LogOut,
   Menu,
   Moon,
-  Plus,
   Sun,
   Tag,
   Upload,
@@ -31,12 +30,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/namecards", label: "名刺一覧", icon: <CreditCard size={16} /> },
-  {
-    href: "/namecards/new",
-    label: "新規登録",
-    icon: <Plus size={16} />,
-    isPrimary: true,
-  },
   {
     href: "/relationships",
     label: "組織管理",
