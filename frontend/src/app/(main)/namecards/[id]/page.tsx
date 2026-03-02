@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { notFound, useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { NameCardDetail, NameCardEditDialog } from "@/components/namecard";
 import {
@@ -15,12 +15,14 @@ export default function NameCardDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const isNumericId = /^\d+$/.test(id);
 
   const [card, setCard] = useState<NameCard | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
 
   const fetchCard = useCallback(async () => {
+    if (!isNumericId) return;
     setLoading(true);
     try {
       const data = await getNameCard(id);
@@ -28,11 +30,15 @@ export default function NameCardDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, isNumericId]);
 
   useEffect(() => {
     fetchCard();
   }, [fetchCard]);
+
+  if (!isNumericId) {
+    notFound();
+  }
 
   const handleSave = async (data: NamecardCreateFormData) => {
     await updateNameCard(id, data);
