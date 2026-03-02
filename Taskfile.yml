@@ -42,6 +42,40 @@ tasks:
       - task: backend:install
       - task: frontend:install
 
+  clean:
+    desc: 🧹 全ビルド成果物とキャッシュを削除
+    cmds:
+      - rm -rf frontend/.next frontend/node_modules
+      - rm -rf backend/.venv backend/.pytest_cache backend/.ruff_cache
+      - find backend -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+
+  kill-ports:
+    desc: 🔪 必要なポート (3000, 5432, 8000) を占有するプロセスを停止
+    vars:
+      PORTS: "3000 5432 8000"
+    cmds:
+      - |
+        for port in {{.PORTS}}; do
+          pid=$(lsof -ti ":${port}" 2>/dev/null || true)
+          if [ -n "$pid" ]; then
+            echo "Killing process(es) on port ${port}: ${pid}"
+            echo "$pid" | xargs kill -9 2>/dev/null || true
+          else
+            echo "Port ${port} is free"
+          fi
+        done
+
+  clean-start:
+    desc: 🔄 クリーンリビルド後にDB起動＆アプリを起動
+    cmds:
+      - task: kill-ports
+      - task: down
+      - task: clean
+      - task: install
+      - task: frontend:build
+      - task: up
+      - task: dev:start
+
   # ----------------------------------------------------------------
   # インフラ関連
   # ----------------------------------------------------------------
