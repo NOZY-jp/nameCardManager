@@ -4,6 +4,7 @@ import {
   createContext,
   type ReactNode,
   useCallback,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -35,6 +36,25 @@ export function AuthProvider({
 }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(initialUser ?? null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (token && !initialUser) {
+      setIsLoading(true);
+      apiClient
+        .get("/auth/me")
+        .then((response) => {
+          setUser(response.data);
+        })
+        .catch(() => {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
+  }, [initialUser]);
 
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
