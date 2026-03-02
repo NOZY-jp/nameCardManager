@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { ImageUploadOCR } from "@/components/camera";
 import { NameCardForm } from "@/components/namecard";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
@@ -30,6 +31,9 @@ export default function NewNameCardPage() {
   >([]);
   const [tags, setTags] = useState<Array<{ id: string; name: string }>>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [ocrDefaults, setOcrDefaults] =
+    useState<Partial<NamecardCreateFormData> | null>(null);
+  const [formKey, setFormKey] = useState(0);
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -44,6 +48,15 @@ export default function NewNameCardPage() {
   useEffect(() => {
     fetchOptions();
   }, [fetchOptions]);
+
+  const handleOCRComplete = useCallback(
+    (data: Partial<NamecardCreateFormData>) => {
+      setOcrDefaults(data);
+      setFormKey((prev) => prev + 1);
+      toast({ type: "success", message: "OCR結果をフォームに反映しました" });
+    },
+    [toast],
+  );
 
   const handleSubmit = async (data: NamecardCreateFormData) => {
     setSubmitting(true);
@@ -68,8 +81,14 @@ export default function NewNameCardPage() {
         <h1 className={styles.title}>名刺を新規登録</h1>
       </div>
 
+      <div className={styles.ocrSection}>
+        <ImageUploadOCR onComplete={handleOCRComplete} />
+      </div>
+
       <div className={styles.formContainer}>
         <NameCardForm
+          key={formKey}
+          defaultValues={ocrDefaults ?? undefined}
           relationships={relationships}
           tags={tags}
           onSubmit={handleSubmit}

@@ -29,6 +29,10 @@
   color: var(--color-foreground);
 }
 
+.ocrSection {
+  margin-bottom: $space-6;
+}
+
 .formContainer {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);

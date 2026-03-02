@@ -1,0 +1,112 @@
+// ─── ImageUploadOCR ───────────────────────────────────────
+
+.uploadArea {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.uploadActions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-6;
+  border: 2px dashed var(--color-border);
+  border-radius: $radius-lg;
+  background-color: var(--color-surface);
+  transition: border-color $transition-fast;
+
+  &:hover {
+    border-color: var(--color-foreground-muted);
+  }
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+  }
+}
+
+.uploadHint {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  font-size: $text-xs;
+  color: var(--color-foreground-muted);
+}
+
+.errorInline {
+  font-size: $text-sm;
+  color: var(--color-error);
+  text-align: center;
+}
+
+// ─── Corner Wrapper ──────────────────────────────────────
+
+.cornerWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.error {
+  position: absolute;
+  top: $space-4;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: $z-sticky;
+  padding: $space-2 $space-4;
+  border-radius: $radius-md;
+  background-color: var(--color-error);
+  color: #fff;
+  font-size: $text-sm;
+  text-align: center;
+  animation: slideDown 300ms ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-1rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+// ─── Processing State ────────────────────────────────────
+
+.processingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $space-8;
+  gap: $space-4;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: $radius-full;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent, #e94560);
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.processingText {
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+}

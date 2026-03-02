@@ -1,7 +1,5 @@
 "use client";
 
-import { Plus } from "lucide-react";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { NameCardList } from "@/components/namecard";
 import { getNameCards, type NameCard } from "@/lib/api/namecards";
@@ -31,14 +29,6 @@ export default function NameCardsPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>名刺一覧</h1>
-        <Link href="/namecards/new" className={styles.newButton}>
-          <Plus size={18} />
-          新規登録
-        </Link>
-      </div>
-
       <NameCardList
         items={items}
         total={total}
