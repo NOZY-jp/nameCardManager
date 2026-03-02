@@ -188,7 +188,7 @@ def sample_namecard(
         first_name_kana="たろう",
         last_name_kana="たなか",
         met_notes="2025年展示会で出会った",
-        notes="重要な取引先",
+        memo="重要な取引先",
     )
     db_session.add(namecard)
     db_session.flush()
@@ -231,7 +231,7 @@ def sample_namecard(
         "first_name_kana": namecard.first_name_kana,
         "last_name_kana": namecard.last_name_kana,
         "met_notes": namecard.met_notes,
-        "notes": namecard.notes,
+        "memo": namecard.memo,
         "contact_methods": [
             {
                 "id": cm1.id,

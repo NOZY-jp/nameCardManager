@@ -51,7 +51,7 @@ def test_create_namecard_full(
         "first_name_kana": "たろう",
         "last_name_kana": "たなか",
         "met_notes": "2025年展示会で出会った",
-        "notes": "重要な取引先",
+        "memo": "重要な取引先",
         "relationship_ids": [sample_relationship_tree[2]["id"]],
         "tag_ids": [sample_tags[0]["id"]],
         "contact_methods": [
@@ -72,7 +72,7 @@ def test_create_namecard_full(
     assert data["first_name_kana"] == "たろう"
     assert data["last_name_kana"] == "たなか"
     assert data["met_notes"] == "2025年展示会で出会った"
-    assert data["notes"] == "重要な取引先"
+    assert data["memo"] == "重要な取引先"
     assert len(data["contact_methods"]) == 2
     assert len(data["relationships"]) == 1
     assert len(data["tags"]) == 1
@@ -330,7 +330,7 @@ def test_list_namecards_default_sort(
     time.sleep(0.05)
     client.patch(
         f"/api/v1/namecards/{ids[1]}",
-        json={"notes": "更新済み"},
+        json={"memo": "更新済み"},
         headers=auth_headers,
     )
 
@@ -591,13 +591,13 @@ def test_update_namecard_without_contact_methods(
     # contact_methods を含まない PATCH
     resp = client.patch(
         f"/api/v1/namecards/{nc_id}",
-        json={"notes": "CM未指定で更新"},
+        json={"memo": "CM未指定で更新"},
         headers=auth_headers,
     )
 
     assert resp.status_code == 200
     data = resp.json()
-    assert data["notes"] == "CM未指定で更新"
+    assert data["memo"] == "CM未指定で更新"
     # contact_methods は変わらない
     assert len(data["contact_methods"]) == len(cms_before)
     before_ids = sorted([cm["id"] for cm in cms_before])
@@ -624,7 +624,7 @@ def test_update_namecard_updated_at_changes(
 
     client.patch(
         f"/api/v1/namecards/{nc_id}",
-        json={"notes": "更新テスト"},
+        json={"memo": "更新テスト"},
         headers=auth_headers,
     )
 
