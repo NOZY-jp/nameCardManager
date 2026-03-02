@@ -44,7 +44,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export function Header() {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -53,7 +53,7 @@ export function Header() {
   useEffect(() => setMounted(true), []);
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
   const closeMobile = useCallback(() => {
@@ -132,7 +132,7 @@ export function Header() {
               onClick={toggleTheme}
               aria-label="テーマ切替"
             >
-              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+              {resolvedTheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </button>
           ) : (
             <button

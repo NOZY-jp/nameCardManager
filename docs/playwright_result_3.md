@@ -755,3 +755,203 @@ const NAV_ITEMS: NavItem[] = [
 
 *修正完了日時: 2026年3月2日*
 *修正者: Sisyphus-Junior Agent*
+---
+
+# ヘッダーレイアウト改善（右揃え対応）
+
+## 修正情報
+- 日時: 2026-03-02
+- 修正者: Sisyphus-Junior Agent
+- 対象: ヘッダーのナビゲーションレイアウトを右揃えに変更
+
+---
+
+## ユーザー要望
+1. ナビゲーションの順番が気持ち悪い → 確認の結果、既に適切な順番（組織管理→タグ管理→エクスポート/インポート→ヘルプ）
+2. センター揃えが気持ち悪い → 右揃えに変更
+
+---
+
+## 実施した修正
+
+### 変更ファイル: `frontend/src/components/layout/header.module.scss`
+
+#### 1. `.header` の `justify-content` を変更
+- `justify-content: space-between` を削除（3要素が等間隔に配置されナビが中央寄りになっていた）
+- `gap: $space-2` を追加（要素間の最小間隔を確保）
+
+#### 2. `.desktopNav` に `margin-left: auto` を追加
+- ナビゲーションを右寄せにする（brandとの間にautoマージンが入り、nav+actionsが右端に寄る）
+
+```scss
+// 修正前
+.header {
+  justify-content: space-between;
+  // ...
+}
+.desktopNav {
+  display: none;
+  align-items: center;
+  gap: $space-1;
+  // ...
+}
+
+// 修正後
+.header {
+  gap: $space-2;
+  // justify-content を削除
+  // ...
+}
+.desktopNav {
+  display: none;
+  align-items: center;
+  gap: $space-1;
+  margin-left: auto;
+  // ...
+}
+```
+
+---
+
+## ナビゲーション順序確認
+
+| 順番 | 項目 | リンク先 |
+|------|------|---------|
+| 1 | 組織管理 | `/relationships` |
+| 2 | タグ管理 | `/tags` |
+| 3 | エクスポート/インポート | `/import-export` |
+| 4 | ヘルプ | `/help` |
+
+→ 適切な順番で変更不要
+
+---
+
+## Playwright テスト結果
+
+### テスト環境
+- Docker コンテナ: db, backend, frontend すべて起動済み
+- フロントエンド: `docker compose up -d --build` でリビルド済み
+- ビューポート: 1280x800
+
+### テスト1: レイアウト位置の数値検証
+
+| 要素 | left | right | 備考 |
+|------|------|-------|------|
+| header | 0 | 1280 | 幅1280px |
+| brand（名刺管理） | 24 | 124 | 左端に配置 ✅ |
+| desktopNav | 629 | 1050 | 右寄りに配置 ✅ |
+| actions（+, テーマ, ログアウト） | 1058 | 1256 | 右端に配置 ✅ |
+
+- `header.justifyContent` = `"normal"`（`space-between` から変更済み ✅）
+- `header.gap` = `"8px"`（$space-2 が適用 ✅）
+- `desktopNav.marginLeft` = `"496.938px"`（`auto` が計算された値 ✅）
+
+### テスト2: アクセシビリティスナップショット確認
+
+| 確認項目 | 結果 |
+|---------|------|
+| 「名刺管理」ブランドリンク | ✅ 左端に表示 |
+| ナビ: 組織管理 → タグ管理 → エクスポート/インポート → ヘルプ | ✅ 正しい順番 |
+| 「+」新規登録ボタン | ✅ 表示あり |
+| テーマ切替ボタン | ✅ 表示あり |
+| ログアウトボタン | ✅ 表示あり |
+
+### テスト3: スクリーンショット目視確認
+- **結果**: PASS
+- ヘッダー左端に「名刺管理」ロゴ、右側にナビゲーション項目とアクションボタンが配置
+
+---
+
+## 結論
+
+- ヘッダーのナビゲーション + アクションが右揃えで表示されるようになった
+- `justify-content: space-between` → `gap` + `margin-left: auto` のパターンに変更
+- brandは左端、ナビゲーションとアクションは右側にまとまって配置される
+
+*修正完了日時: 2026年3月2日*
+*修正者: Sisyphus-Junior Agent*
+
+---
+
+# ダークモード切り替えボタンの初期表示修正
+
+## 修正情報
+- 日時: 2026-03-02
+- 修正者: Sisyphus-Junior Agent
+- 対象: テーマ切替ボタンが `theme`（`"system"`）で判定していたため、初期アイコンが実際のテーマと不一致だった問題
+
+---
+
+## 原因
+
+`next-themes` の `useTheme()` が返す `theme` は `"system"` | `"light"` | `"dark"` の3値。
+OS がダークモードでも `theme === "system"` なので、`theme === "dark"` の判定が false になり Moon アイコンが表示されていた。
+
+---
+
+## 実施した修正
+
+### 変更ファイル: `frontend/src/components/layout/Header.tsx`
+
+3箇所の `theme` → `resolvedTheme` への変更のみ:
+
+```tsx
+// 修正前
+const { theme, setTheme } = useTheme();
+const toggleTheme = () => {
+  setTheme(theme === "dark" ? "light" : "dark");
+};
+{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+
+// 修正後
+const { resolvedTheme, setTheme } = useTheme();
+const toggleTheme = () => {
+  setTheme(resolvedTheme === "dark" ? "light" : "dark");
+};
+{resolvedTheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+```
+
+`resolvedTheme` は `"system"` を実際の適用テーマ（`"dark"` or `"light"`）に解決した値。
+
+---
+
+## Playwright テスト結果
+
+### テスト環境
+- Docker コンテナ: db, backend, frontend すべて起動済み
+- フロントエンド: `task clean-start` でクリーンビルド済み
+
+### テスト1: 初期表示の確認
+
+| 確認項目 | 結果 | 詳細 |
+|---------|------|------|
+| `html` の class | ✅ `dark` | ダークモードが適用されている |
+| テーマ切替ボタンのアイコン | ✅ Sun（☀️） | `lucide-sun` クラスを含む SVG |
+| Moon アイコンが表示されていないこと | ✅ なし | `lucide-moon` は含まれない |
+
+### テスト2: 1回クリックでライトモードに切り替え
+
+| 確認項目 | 結果 | 詳細 |
+|---------|------|------|
+| `html` の class | ✅ `light` | ライトモードに切り替わった |
+| テーマ切替ボタンのアイコン | ✅ Moon（🌙） | `lucide-moon` クラスを含む SVG |
+| Sun アイコンが表示されていないこと | ✅ なし | `lucide-sun` は含まれない |
+
+### テスト3: 再クリックでダークモードに戻る
+
+| 確認項目 | 結果 | 詳細 |
+|---------|------|------|
+| `html` の class | ✅ `dark` | ダークモードに戻った |
+| テーマ切替ボタンのアイコン | ✅ Sun（☀️） | `lucide-sun` クラスを含む SVG |
+
+---
+
+## 結論
+
+- `theme` → `resolvedTheme` への変更（3箇所）により、テーマ切替ボタンの初期表示が正しくなった
+- ダークモード時は Sun アイコン（ライトに切り替え）、ライトモード時は Moon アイコン（ダークに切り替え）が表示される
+- 1回のクリックで正しくテーマが切り替わることを確認済み
+- `defaultTheme="system"` の設定はそのまま維持され、OS設定追従機能は保持される
+
+*修正完了日時: 2026年3月2日*
+*修正者: Sisyphus-Junior Agent*

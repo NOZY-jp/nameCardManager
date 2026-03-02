@@ -4,7 +4,7 @@
   z-index: $z-sticky;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: $space-2;
   height: 4rem;
   padding: 0 $space-6;
   border-bottom: 1px solid var(--color-border);
@@ -26,6 +26,7 @@
   display: none;
   align-items: center;
   gap: $space-1;
+  margin-left: auto;
 
   @media (min-width: $bp-lg) {
     display: flex;
