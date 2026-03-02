@@ -42,5 +42,9 @@ def get_db() -> Generator[Session]:
     db = get_session_local()()
     try:
         yield db
+        db.commit()  # 正常終了時にコミット
+    except Exception:
+        db.rollback()  # エラー時にロールバック
+        raise
     finally:
         db.close()
