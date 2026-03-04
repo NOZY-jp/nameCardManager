@@ -1,0 +1,33 @@
+.fab {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: $z-sticky;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 3.5rem;
+  height: 3.5rem;
+  border: none;
+  border-radius: $radius-full;
+
+  color: var(--color-accent-foreground);
+  background-color: var(--color-accent);
+  box-shadow: $shadow-lg;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color $transition-fast, box-shadow $transition-fast,
+    transform $transition-fast;
+
+  &:hover {
+    background-color: var(--color-accent-hover);
+    box-shadow: $shadow-xl;
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}

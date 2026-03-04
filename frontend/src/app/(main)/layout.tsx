@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
+import { FloatingAddButton } from "@/components/common/FloatingAddButton";
 
 export default function MainLayout({
   children,
@@ -12,6 +13,7 @@ export default function MainLayout({
         <Header />
       </Suspense>
       <main>{children}</main>
+      <FloatingAddButton />
     </>
   );
 }

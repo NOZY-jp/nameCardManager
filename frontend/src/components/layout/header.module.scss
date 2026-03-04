@@ -148,24 +148,6 @@
   padding: 0 $space-4 $space-2;
 }
 
-// ─── Add Button ───────────────────────────────────────
-.addButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: $radius-full;
-  color: var(--color-accent-foreground);
-  background-color: var(--color-accent);
-  text-decoration: none;
-  transition: background-color $transition-fast;
-
-  &:hover {
-    background-color: var(--color-accent-hover);
-  }
-}
-
 // ─── Theme Toggle (header — tablet/desktop only) ──────
 .themeToggle {
   display: inline-flex;

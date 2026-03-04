@@ -1424,3 +1424,88 @@ export default function Home() {
 |----------|----------|------|
 | `frontend/src/components/layout/header.module.scss` | 大幅変更 | 三段階ブレークポイント化、ハンバーガー右端、モバイルナビ右揃え、テーマ切替のレスポンシブ対応 |
 | `frontend/src/components/layout/Header.tsx` | 変更 | ナビリンクにアイコン/ラベルspan追加、テーマ切替のデスクトップ/モバイル分離 |
+
+---
+---
+
+# 問題5 修正結果: 名刺一覧ページの余白修正
+
+## 修正情報
+- 日時: 2026-03-04
+- 実施者: Sisyphus-Junior Agent
+- 対象: `/namecards` ページの `.page` 要素に余白追加
+- 方法: SCSS修正 + Playwright UI検証
+
+---
+
+## 1. 修正結果サマリー
+
+| 項目 | 修正前 | 修正後 |
+|------|--------|--------|
+| `max-width` | ❌ なし | ✅ `48rem`（768px） |
+| `margin` | ❌ `0` | ✅ `$space-8 auto`（32px auto） |
+| `padding` | ❌ `0` | ✅ `0 $space-4`（0 16px） |
+
+---
+
+## 2. 修正内容
+
+### 修正ファイル
+
+**ファイル**: `frontend/src/app/(main)/namecards/namecards.module.scss`
+
+```scss
+// 修正後
+.page {
+  max-width: 48rem;
+  margin: $space-8 auto;
+  padding: 0 $space-4;
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+}
+```
+
+他ページ（tags, relationships, help）と同じ余白パターンに統一。
+
+---
+
+## 3. Playwright UI検証結果
+
+### 検証環境
+- Docker コンテナ: frontend (:3000), backend (:8000), db (:5432 healthy) — すべて稼働中
+- ビューポート: デフォルト（1280px幅）
+
+### 検証結果
+
+| # | 検証項目 | 結果 | 詳細 |
+|---|----------|------|------|
+| 1 | `/namecards` ページが正常に表示される | ✅ 合格 | HTTP 200、ソートUIとFAB表示 |
+| 2 | `.page` の `max-width` が `768px` | ✅ 合格 | Computed Style: `768px` |
+| 3 | `.page` の `margin` が `32px auto` | ✅ 合格 | Computed Style: `32px 256px`（auto中央寄せ） |
+| 4 | `.page` の `padding` が `0 16px` | ✅ 合格 | Computed Style: `0px 16px` |
+| 5 | タグ管理ページと同じ余白設定 | ✅ 合格 | 両ページのComputed Style値が完全に一致 |
+
+### 他ページとの比較（Computed Styles）
+
+| プロパティ | `/namecards` | `/tags` | 一致 |
+|-----------|-------------|---------|------|
+| max-width | 768px | 768px | ✅ |
+| margin-top | 32px | 32px | ✅ |
+| margin-left | 256px (auto) | 256px (auto) | ✅ |
+| padding-left | 16px | 16px | ✅ |
+| padding-right | 16px | 16px | ✅ |
+
+### スクリーンショット
+
+| ファイル | 説明 |
+|----------|------|
+| `docs/screenshots/namecards-margin-fixed.png` | 名刺一覧ページ（余白修正後） |
+
+---
+
+## 4. 修正ファイル一覧
+
+| ファイル | 変更種別 | 概要 |
+|----------|----------|------|
+| `frontend/src/app/(main)/namecards/namecards.module.scss` | 変更 | `.page` に `max-width: 48rem`, `margin: $space-8 auto`, `padding: 0 $space-4` を追加 |

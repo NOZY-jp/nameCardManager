@@ -2,12 +2,12 @@
 
 import {
   BookOpen,
+  CreditCard,
   FolderTree,
   HelpCircle,
   LogOut,
   Menu,
   Moon,
-  Plus,
   Sun,
   Tag,
   Upload,
@@ -30,6 +30,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  {
+    href: "/namecards",
+    label: "名刺一覧",
+    icon: <CreditCard size={16} />,
+    isPrimary: true,
+  },
   {
     href: "/relationships",
     label: "組織管理",
@@ -101,7 +107,7 @@ export function Header() {
   return (
     <>
       <header className={styles.header}>
-        <Link href="/" className={styles.brand}>
+        <Link href="/namecards" className={styles.brand}>
           <BookOpen size={20} />
           名刺管理
         </Link>
@@ -140,14 +146,6 @@ export function Header() {
         </div>
 
         <div className={styles.actions}>
-          <Link
-            href="/namecards/new"
-            className={styles.addButton}
-            aria-label="新規登録"
-          >
-            <Plus size={20} />
-          </Link>
-
           {mounted ? (
             <button
               type="button"
