@@ -46,6 +46,8 @@ export function NameCardEditDialog({
     department: card.department ?? "",
     position: card.position ?? "",
     memo: card.memo ?? "",
+    image_path: card.images?.[0]?.image_path ?? "",
+    image_paths: card.images?.map((img) => img.image_path) ?? [],
     contact_methods:
       card.contact_methods?.map((cm) => ({
         type: cm.type as (typeof CONTACT_METHOD_TYPES)[number],
@@ -67,6 +69,8 @@ export function NameCardEditDialog({
             tags={tags}
             onSubmit={onSave}
             submitLabel="保存"
+            images={card.images ?? []}
+            namecardId={String(card.id)}
           />
         </div>
       </DialogContent>

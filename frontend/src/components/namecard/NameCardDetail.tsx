@@ -2,9 +2,9 @@
 
 import { ArrowLeft, Edit, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { AuthImage } from "@/components/ui/auth-image";
 import { Button } from "@/components/ui/button";
 import type { NameCard } from "@/lib/api/namecards";
+import { ImageGallery } from "./ImageGallery";
 import styles from "./NameCardDetail.module.scss";
 
 interface NameCardDetailProps {
@@ -62,16 +62,11 @@ export function NameCardDetail({
         </div>
       </div>
 
-      {card.image_path && (
-        <div className={styles.imageSection}>
-          <AuthImage
-            apiPath={`/images/${card.id}`}
-            alt={`${fullName}の名刺`}
-            width={600}
-            height={375}
-            style={{ maxWidth: "100%", height: "auto" }}
-          />
-        </div>
+      {card.images?.length > 0 && (
+        <ImageGallery
+          namecardId={String(card.id)}
+          images={card.images}
+        />
       )}
 
       {(card.company_name || card.department || card.position) && (

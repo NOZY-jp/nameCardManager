@@ -30,6 +30,11 @@ export interface ProcessImageResponse {
   thumbnail_path: string;
 }
 
+export interface ProcessAdditionalResponse {
+  image_path: string;
+  thumbnail_path: string;
+}
+
 export const imageApi = {
   async upload(file: File): Promise<UploadImageResponse> {
     const formData = new FormData();
@@ -46,6 +51,14 @@ export const imageApi = {
   async process(params: ProcessImageRequest): Promise<ProcessImageResponse> {
     const response = await apiClient.post<ProcessImageResponse>(
       "/images/process",
+      { upload_id: params.upload_id, corners: params.corners },
+    );
+    return response.data;
+  },
+
+  async processAdditional(params: ProcessImageRequest): Promise<ProcessAdditionalResponse> {
+    const response = await apiClient.post<ProcessAdditionalResponse>(
+      "/images/process-additional",
       { upload_id: params.upload_id, corners: params.corners },
     );
     return response.data;

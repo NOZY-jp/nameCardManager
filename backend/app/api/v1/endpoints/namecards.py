@@ -6,6 +6,9 @@
 - GET    /namecards/{id}  – 名刺詳細
 - PATCH  /namecards/{id}  – 名刺更新（contact_methods は完全置換: NC-7）
 - DELETE /namecards/{id}  – 名刺削除
+- POST   /namecards/{id}/images          – 画像追加
+- DELETE /namecards/{id}/images/{image_id} – 画像削除
+- PUT    /namecards/{id}/images/{image_id} – 画像差し替え
 """
 
 from __future__ import annotations
@@ -17,12 +20,15 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import asc, desc, func, select
 
 from app.api.v1.deps import AuthUser, DbSession
-from app.models import ContactMethod, NameCard, Relationship, Tag
+from app.models import ContactMethod, NameCard, NameCardImage, Relationship, Tag
 from app.schemas import (
+    AddImageRequest,
     ContactMethodResponse,
     NameCardCreate,
+    NameCardImageResponse,
     NameCardUpdate,
     RelationshipResponse,
+    ReplaceImageRequest,
     TagResponse,
 )
 
@@ -51,7 +57,15 @@ def _build_namecard_response(nc: NameCard, db: DbSession) -> dict:
         "company_name": nc.company_name,
         "department": nc.department,
         "position": nc.position,
-        "image_path": nc.image_path,
+        "images": [
+            NameCardImageResponse(
+                id=img.id,
+                image_path=img.image_path,
+                position=img.position,
+                created_at=img.created_at,
+            )
+            for img in nc.images
+        ],
         "met_notes": nc.met_notes,
         "memo": nc.memo,
         "contact_methods": [
@@ -246,12 +260,21 @@ def create_namecard(
         company_name=body.company_name,
         department=body.department,
         position=body.position,
-        image_path=body.image_path,
         met_notes=body.met_notes,
         memo=body.memo,
     )
     db.add(nc)
     db.flush()
+
+    # NameCardImage 作成（image_paths 配列から）
+    if body.image_paths:
+        for idx, img_path in enumerate(body.image_paths):
+            img = NameCardImage(
+                name_card_id=nc.id,
+                image_path=img_path,
+                position=idx,
+            )
+            db.add(img)
 
     # ContactMethod 作成
     for cm_data in body.contact_methods:
@@ -308,7 +331,6 @@ def update_namecard(
         "company_name",
         "department",
         "position",
-        "image_path",
         "met_notes",
         "memo",
     ):
@@ -369,3 +391,118 @@ def delete_namecard(
     nc = _get_user_namecard(db, nc_id, current_user.id)
     db.delete(nc)
     db.flush()
+
+
+# ─── POST /namecards/{nc_id}/images ──────────────
+@router.post("/{nc_id}/images", status_code=status.HTTP_201_CREATED)
+def add_image(
+    nc_id: int,
+    body: AddImageRequest,
+    current_user: AuthUser,
+    db: DbSession,
+) -> dict:
+    """名刺に画像を追加する。position は既存最大値 + 1。"""
+    nc = _get_user_namecard(db, nc_id, current_user.id)
+
+    # 既存画像の最大 position を取得
+    max_pos = db.execute(
+        select(func.max(NameCardImage.position)).where(
+            NameCardImage.name_card_id == nc.id
+        )
+    ).scalar()
+    new_position = (max_pos + 1) if max_pos is not None else 0
+
+    img = NameCardImage(
+        name_card_id=nc.id,
+        image_path=body.image_path,
+        position=new_position,
+    )
+    db.add(img)
+    db.flush()
+    db.refresh(img)
+
+    return NameCardImageResponse(
+        id=img.id,
+        image_path=img.image_path,
+        position=img.position,
+        created_at=img.created_at,
+    ).model_dump()
+
+
+# ─── DELETE /namecards/{nc_id}/images/{image_id} ─
+@router.delete("/{nc_id}/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_image(
+    nc_id: int,
+    image_id: int,
+    current_user: AuthUser,
+    db: DbSession,
+) -> None:
+    """名刺から画像を削除し、残りの position を再計算する。"""
+    nc = _get_user_namecard(db, nc_id, current_user.id)
+
+    img = db.execute(
+        select(NameCardImage).where(
+            NameCardImage.id == image_id,
+            NameCardImage.name_card_id == nc.id,
+        )
+    ).scalar_one_or_none()
+
+    if img is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found",
+        )
+
+    db.delete(img)
+    db.flush()
+
+    # 残りの画像の position を再計算（0, 1, 2, ...）
+    remaining = (
+        db.execute(
+            select(NameCardImage)
+            .where(NameCardImage.name_card_id == nc.id)
+            .order_by(NameCardImage.position)
+        )
+        .scalars()
+        .all()
+    )
+    for idx, remaining_img in enumerate(remaining):
+        remaining_img.position = idx
+    db.flush()
+
+
+# ─── PUT /namecards/{nc_id}/images/{image_id} ────
+@router.put("/{nc_id}/images/{image_id}")
+def replace_image(
+    nc_id: int,
+    image_id: int,
+    body: ReplaceImageRequest,
+    current_user: AuthUser,
+    db: DbSession,
+) -> dict:
+    """名刺の画像を差し替える（position は維持）。"""
+    nc = _get_user_namecard(db, nc_id, current_user.id)
+
+    img = db.execute(
+        select(NameCardImage).where(
+            NameCardImage.id == image_id,
+            NameCardImage.name_card_id == nc.id,
+        )
+    ).scalar_one_or_none()
+
+    if img is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found",
+        )
+
+    img.image_path = body.image_path
+    db.flush()
+    db.refresh(img)
+
+    return NameCardImageResponse(
+        id=img.id,
+        image_path=img.image_path,
+        position=img.position,
+        created_at=img.created_at,
+    ).model_dump()

@@ -16,6 +16,7 @@ from app.api.v1.deps import AuthUser, DbSession
 from app.models import NameCard, Relationship, Tag
 from app.schemas import (
     ContactMethodResponse,
+    NameCardImageResponse,
     RelationshipResponse,
     TagResponse,
 )
@@ -57,7 +58,15 @@ def _build_namecard_response(nc: NameCard, db: Session) -> dict:
         "company_name": nc.company_name,
         "department": nc.department,
         "position": nc.position,
-        "image_path": nc.image_path,
+        "images": [
+            NameCardImageResponse(
+                id=img.id,
+                image_path=img.image_path,
+                position=img.position,
+                created_at=img.created_at,
+            ).model_dump()
+            for img in nc.images
+        ],
         "met_notes": nc.met_notes,
         "memo": nc.memo,
         "contact_methods": [

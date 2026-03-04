@@ -4,7 +4,9 @@ import { notFound, useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { NameCardDetail, NameCardEditDialog } from "@/components/namecard";
 import {
+  addNameCardImage,
   deleteNameCard,
+  deleteNameCardImage,
   getNameCard,
   type NameCard,
   updateNameCard,
@@ -67,7 +69,27 @@ export default function NameCardDetailPage() {
   }
 
   const handleSave = async (data: NamecardCreateFormData) => {
-    await updateNameCard(id, data);
+    const existingImages = card?.images ?? [];
+    const submittedPaths = data.image_paths ?? [];
+    const existingPaths = existingImages.map((img) => img.image_path);
+
+    const pathsToDelete = existingImages.filter(
+      (img) => !submittedPaths.includes(img.image_path),
+    );
+    const pathsToAdd = submittedPaths.filter(
+      (path) => !existingPaths.includes(path),
+    );
+
+    for (const img of pathsToDelete) {
+      await deleteNameCardImage(id, img.id);
+    }
+    for (const path of pathsToAdd) {
+      await addNameCardImage(id, path);
+    }
+
+    const { image_paths: _ip, image_path: _ipath, ...scalarData } = data;
+    await updateNameCard(id, scalarData);
+
     setEditOpen(false);
     await fetchCard();
   };

@@ -1,0 +1,62 @@
+// ─── ImageActionMenu ──────────────────────────────────────
+
+.menuWrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.triggerButton {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+  transition: transform $transition-fast;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + $space-1);
+  left: 0;
+  z-index: $z-dropdown;
+  min-width: 12rem;
+  padding: $space-1 0;
+  border-radius: $radius-lg;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  box-shadow: $shadow-lg;
+  animation: fadeIn 150ms ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-$space-1);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  width: 100%;
+  padding: $space-2 $space-3;
+  border: none;
+  background: none;
+  font-size: $text-sm;
+  color: var(--color-foreground);
+  cursor: pointer;
+  transition: background-color $transition-fast;
+  text-align: left;
+
+  &:hover {
+    background-color: var(--color-surface-hover);
+  }
+}

@@ -65,7 +65,11 @@ export default function NewNameCardPage() {
   const handleSubmit = async (data: NamecardCreateFormData) => {
     setSubmitting(true);
     try {
-      await createNameCard(data as unknown as NameCardCreateData);
+      const createData: NameCardCreateData = {
+        ...data,
+        image_paths: data.image_paths?.length ? data.image_paths : data.image_path ? [data.image_path] : [],
+      };
+      await createNameCard(createData);
       toast({ type: "success", message: "名刺を登録しました" });
       router.push("/namecards");
     } catch {

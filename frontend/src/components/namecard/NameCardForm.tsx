@@ -1,9 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { X } from "lucide-react";
-import { useState } from "react";
+import { Trash2, X } from "lucide-react";
+import { useCallback, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
+import { AdditionalImageFlow } from "@/components/camera";
+import { AuthImage } from "@/components/ui/auth-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,11 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { NameCardImageData } from "@/lib/api/namecards";
 import { CONTACT_METHOD_TYPES } from "@/lib/schemas/contact-method";
 import {
   type NamecardCreateFormData,
   namecardCreateSchema,
 } from "@/lib/schemas/namecard";
+import { ImageActionMenu } from "./ImageActionMenu";
 import styles from "./NameCardForm.module.scss";
 
 interface RelationshipOption {
@@ -44,6 +48,10 @@ interface NameCardFormProps {
   tags?: TagOption[];
   onSubmit?: (data: NamecardCreateFormData) => void;
   submitLabel?: string;
+  /** Existing images for edit mode */
+  images?: NameCardImageData[];
+  /** Namecard ID for edit mode (to display images via AuthImage) */
+  namecardId?: string;
 }
 
 function flattenRelationships(
@@ -69,6 +77,8 @@ export function NameCardForm({
   tags = [],
   onSubmit,
   submitLabel = "登録",
+  images: existingImages = [],
+  namecardId,
 }: NameCardFormProps) {
   const {
     register,
@@ -89,6 +99,7 @@ export function NameCardForm({
       position: defaultValues?.position ?? "",
       memo: defaultValues?.memo ?? "",
       image_path: defaultValues?.image_path ?? "",
+      image_paths: defaultValues?.image_paths ?? [],
       contact_methods:
         defaultValues?.contact_methods?.map((cm) => ({
           type: cm.type as (typeof CONTACT_METHOD_TYPES)[number],
@@ -110,9 +121,96 @@ export function NameCardForm({
   const [selectedRelIds, setSelectedRelIds] = useState<string[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
+  const [additionalImagePaths, setAdditionalImagePaths] = useState<string[]>(
+    () => existingImages.length > 1 ? existingImages.slice(1).map((img) => img.image_path) : [],
+  );
+  const [imageFlowState, setImageFlowState] = useState<{
+    active: boolean;
+    source: "file" | "camera";
+    replaceIndex: number | null;
+  }>({ active: false, source: "file", replaceIndex: null });
+
+  const initialImagePath = watch("image_path");
+
+  const allImagePaths = [
+    ...(initialImagePath ? [initialImagePath] : []),
+    ...additionalImagePaths,
+  ];
+
+  const updateFormImagePaths = useCallback(
+    (paths: string[]) => {
+      setValue("image_paths", paths, { shouldDirty: true });
+    },
+    [setValue],
+  );
+
+  const handleAddImageComplete = useCallback(
+    (imagePath: string) => {
+      if (imageFlowState.replaceIndex !== null) {
+        const idx = imageFlowState.replaceIndex;
+        if (idx === 0 && initialImagePath) {
+          setValue("image_path", imagePath, { shouldDirty: true });
+        } else {
+          const additionalIdx = initialImagePath ? idx - 1 : idx;
+          const newPaths = [...additionalImagePaths];
+          newPaths[additionalIdx] = imagePath;
+          setAdditionalImagePaths(newPaths);
+          updateFormImagePaths([
+            ...(initialImagePath ? [initialImagePath] : []),
+            ...newPaths,
+          ]);
+        }
+      } else {
+        const newPaths = [...additionalImagePaths, imagePath];
+        setAdditionalImagePaths(newPaths);
+        updateFormImagePaths([
+          ...(initialImagePath ? [initialImagePath] : []),
+          ...newPaths,
+        ]);
+      }
+      setImageFlowState({ active: false, source: "file", replaceIndex: null });
+    },
+    [imageFlowState.replaceIndex, initialImagePath, additionalImagePaths, setValue, updateFormImagePaths],
+  );
+
+  const handleDeleteImage = useCallback(
+    (index: number) => {
+      if (index === 0 && initialImagePath) {
+        setValue("image_path", "", { shouldDirty: true });
+      } else {
+        const additionalIdx = initialImagePath ? index - 1 : index;
+        const newPaths = additionalImagePaths.filter((_, i) => i !== additionalIdx);
+        setAdditionalImagePaths(newPaths);
+        updateFormImagePaths([
+          ...(initialImagePath ? [initialImagePath] : []),
+          ...newPaths,
+        ]);
+      }
+    },
+    [initialImagePath, additionalImagePaths, setValue, updateFormImagePaths],
+  );
+
+  const handleImageFlowCancel = useCallback(() => {
+    setImageFlowState({ active: false, source: "file", replaceIndex: null });
+  }, []);
+
   const handleFormSubmit = (data: NamecardCreateFormData) => {
-    onSubmit?.(data);
+    const paths = [
+      ...(data.image_path ? [data.image_path] : []),
+      ...additionalImagePaths,
+    ];
+    onSubmit?.({ ...data, image_paths: paths });
   };
+
+  if (imageFlowState.active) {
+    return (
+      <AdditionalImageFlow
+        source={imageFlowState.source}
+        onComplete={handleAddImageComplete}
+        onCancel={handleImageFlowCancel}
+      />
+    );
+  }
 
   return (
     <form
@@ -121,6 +219,107 @@ export function NameCardForm({
       noValidate
     >
       <input type="hidden" {...register("image_path")} />
+
+      {allImagePaths.length > 0 && (
+        <div className={styles.imageSection}>
+          <span className={styles.imageSectionTitle}>名刺画像</span>
+          <div className={styles.imageList}>
+            {allImagePaths.map((path, index) => (
+              <div key={`img-${path}`} className={styles.imageItem}>
+                <div className={styles.imagePreview}>
+                  {namecardId && existingImages[index] ? (
+                    <AuthImage
+                      apiPath={`/images/${namecardId}${index === 0 ? "" : `?image_id=${existingImages[index].id}`}`}
+                      alt={`名刺画像 ${index + 1}`}
+                      width={400}
+                      height={250}
+                      style={{ maxWidth: "100%", height: "auto" }}
+                    />
+                  ) : (
+                    <img
+                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL || ""}/uploads/${path.replace(/^\/uploads\//, "")}`}
+                      alt={`名刺画像 ${index + 1}`}
+                      className={styles.previewImg}
+                    />
+                  )}
+                </div>
+                <div className={styles.imageItemActions}>
+                  <ImageActionMenu
+                    mode="change"
+                    onSelectImage={() =>
+                      setImageFlowState({
+                        active: true,
+                        source: "file",
+                        replaceIndex: index,
+                      })
+                    }
+                    onCapturePhoto={() =>
+                      setImageFlowState({
+                        active: true,
+                        source: "camera",
+                        replaceIndex: index,
+                      })
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteImage(index)}
+                    className={styles.deleteImageBtn}
+                  >
+                    <Trash2 size={14} />
+                    削除
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className={styles.addImageAction}>
+            <ImageActionMenu
+              mode="add"
+              onSelectImage={() =>
+                setImageFlowState({
+                  active: true,
+                  source: "file",
+                  replaceIndex: null,
+                })
+              }
+              onCapturePhoto={() =>
+                setImageFlowState({
+                  active: true,
+                  source: "camera",
+                  replaceIndex: null,
+                })
+              }
+            />
+          </div>
+        </div>
+      )}
+
+      {allImagePaths.length === 0 && (
+        <div className={styles.addImageAction}>
+          <ImageActionMenu
+            mode="add"
+            onSelectImage={() =>
+              setImageFlowState({
+                active: true,
+                source: "file",
+                replaceIndex: null,
+              })
+            }
+            onCapturePhoto={() =>
+              setImageFlowState({
+                active: true,
+                source: "camera",
+                replaceIndex: null,
+              })
+            }
+          />
+        </div>
+      )}
+
       <div className={styles.fieldRow}>
         <div className={styles.fieldGroup}>
           <Label htmlFor="last_name" required>

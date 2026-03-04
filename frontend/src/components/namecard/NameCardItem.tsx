@@ -41,7 +41,7 @@ export function NameCardItem({ card }: NameCardItemProps) {
       onKeyDown={handleKeyDown}
     >
       <div className={styles.thumbnail}>
-        {card.image_path ? (
+        {card.images?.[0] ? (
           <AuthImage
             apiPath={`/images/${card.id}/thumbnail`}
             alt={fullName}

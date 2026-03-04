@@ -2,6 +2,13 @@ import { apiClient } from "./client";
 
 // ─── Types ───────────────────────────────────────────────
 
+export interface NameCardImageData {
+  id: number;
+  image_path: string;
+  position: number;
+  created_at: string;
+}
+
 export interface ContactMethod {
   id?: string;
   type: string;
@@ -41,6 +48,7 @@ export interface NameCard {
   contact_methods: ContactMethod[];
   relationships: RelationshipRef[];
   tags: TagRef[];
+  images: NameCardImageData[];
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +64,7 @@ export interface NameCardCreateData {
   memo?: string;
   met_notes?: string;
   image_path?: string;
+  image_paths?: string[];
   contact_methods?: Omit<ContactMethod, "id">[];
   relationship_ids?: number[];
   tag_ids?: number[];
@@ -142,3 +151,44 @@ export const namecardApi = {
     updateNameCard(id, data as unknown as NameCardUpdateData),
   delete: async (id: number | string) => deleteNameCard(id),
 };
+
+// ─── Image Management ───────────────────────────────────
+
+export async function addNameCardImage(
+  namecardId: string | number,
+  imagePath: string,
+): Promise<NameCardImageData> {
+  const response = await apiClient.post<NameCardImageData>(
+    `/namecards/${namecardId}/images`,
+    { image_path: imagePath },
+  );
+  return response.data;
+}
+
+export async function deleteNameCardImage(
+  namecardId: string | number,
+  imageId: number,
+): Promise<void> {
+  await apiClient.delete(`/namecards/${namecardId}/images/${imageId}`);
+}
+
+export async function replaceNameCardImage(
+  namecardId: string | number,
+  imageId: number,
+  newImagePath: string,
+): Promise<NameCardImageData> {
+  const response = await apiClient.put<NameCardImageData>(
+    `/namecards/${namecardId}/images/${imageId}`,
+    { image_path: newImagePath },
+  );
+  return response.data;
+}
+
+export async function getNameCardImages(
+  namecardId: string | number,
+): Promise<{ images: NameCardImageData[] }> {
+  const response = await apiClient.get<{ images: NameCardImageData[] }>(
+    `/images/namecard/${namecardId}`,
+  );
+  return response.data;
+}

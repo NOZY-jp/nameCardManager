@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 from sqlalchemy.orm import Session
 
-from app.models import NameCard
+from app.models import NameCard, NameCardImage
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  ヘルパー
@@ -81,10 +81,17 @@ def _create_namecard_with_image(
         user_id=user_id,
         first_name="太郎",
         last_name="田中",
-        image_path=image_path,
     )
     db_session.add(namecard)
     db_session.flush()
+    if image_path is not None:
+        img = NameCardImage(
+            name_card_id=namecard.id,
+            image_path=image_path,
+            position=0,
+        )
+        db_session.add(img)
+        db_session.flush()
     return namecard
 
 

@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 
 from app.api.v1.deps import AuthUser, DbSession
-from app.models import ContactMethod, NameCard, Relationship, Tag
+from app.models import ContactMethod, NameCard, NameCardImage, Relationship, Tag
 
 router = APIRouter()
 
@@ -153,12 +153,20 @@ async def import_json(
             company_name=nc_data.get("company_name"),
             department=nc_data.get("department"),
             position=nc_data.get("position"),
-            image_path=nc_data.get("image_path"),
             met_notes=nc_data.get("met_notes"),
             memo=nc_data.get("memo"),
         )
         db.add(nc)
         db.flush()
+
+        # NameCardImage 作成（images 配列から）
+        for idx, img_data in enumerate(nc_data.get("images", [])):
+            img = NameCardImage(
+                name_card_id=nc.id,
+                image_path=img_data.get("image_path", ""),
+                position=img_data.get("position", idx),
+            )
+            db.add(img)
 
         # ContactMethod 作成
         for cm_data in nc_data.get("contact_methods", []):

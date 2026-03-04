@@ -253,7 +253,6 @@ class NameCard(Base):
     company_name: Mapped[str | None] = mapped_column(String(200))
     department: Mapped[str | None] = mapped_column(String(200))
     position: Mapped[str | None] = mapped_column(String(200))
-    image_path: Mapped[str | None] = mapped_column(String(500))
     met_notes: Mapped[str | None] = mapped_column(Text, comment="どこで出会ったか")
     memo: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
@@ -274,11 +273,37 @@ class NameCard(Base):
     contact_methods: Mapped[list[ContactMethod]] = _relationship(
         back_populates="name_card", cascade="all, delete-orphan"
     )
+    images: Mapped[list[NameCardImage]] = _relationship(
+        back_populates="name_card",
+        cascade="all, delete-orphan",
+        order_by="NameCardImage.position",
+    )
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  NameCardImage（名刺画像）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+class NameCardImage(Base):
+    __tablename__ = "name_card_images"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name_card_id: Mapped[int] = mapped_column(
+        ForeignKey("name_cards.id", ondelete="CASCADE"), nullable=False
+    )
+    image_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    # リレーション
+    name_card: Mapped[NameCard] = _relationship(back_populates="images")
 
 
 __all__ = [
     "User",
     "NameCard",
+    "NameCardImage",
     "Relationship",
     "Tag",
     "NameCardTag",

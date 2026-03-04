@@ -174,6 +174,41 @@ class TagResponse(BaseModel):
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  NameCardImage（名刺画像）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+class NameCardImageResponse(BaseModel):
+    """名刺画像レスポンス。"""
+
+    id: int
+    image_path: str
+    position: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AddImageRequest(BaseModel):
+    """画像追加リクエスト。"""
+
+    image_path: str
+
+
+class ReplaceImageRequest(BaseModel):
+    """画像差し替えリクエスト。"""
+
+    image_path: str
+
+
+class ProcessAdditionalResponse(BaseModel):
+    """追加画像処理レスポンス（OCRなし）。"""
+
+    image_path: str
+    thumbnail_path: str
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  NameCard（名刺）
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -188,7 +223,7 @@ class NameCardCreate(BaseModel):
     company_name: str | None = None
     department: str | None = None
     position: str | None = None
-    image_path: str | None = None
+    image_paths: list[str] | None = None
     met_notes: str | None = None
     memo: str | None = None
     contact_methods: list[ContactMethodCreate] = []
@@ -206,7 +241,6 @@ class NameCardUpdate(BaseModel):
     company_name: str | None = None
     department: str | None = None
     position: str | None = None
-    image_path: str | None = None
     met_notes: str | None = None
     memo: str | None = None
     contact_methods: list[ContactMethodCreate] | None = None
@@ -226,7 +260,7 @@ class NameCardResponse(BaseModel):
     company_name: str | None
     department: str | None
     position: str | None
-    image_path: str | None
+    images: list[NameCardImageResponse]
     met_notes: str | None
     memo: str | None
     contact_methods: list[ContactMethodResponse]
@@ -374,6 +408,10 @@ __all__ = [
     "TagUpdate",
     "TagResponse",
     # NameCard
+    "NameCardImageResponse",
+    "AddImageRequest",
+    "ReplaceImageRequest",
+    "ProcessAdditionalResponse",
     "NameCardCreate",
     "NameCardUpdate",
     "NameCardResponse",

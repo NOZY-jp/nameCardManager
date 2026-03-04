@@ -1,10 +1,12 @@
 """画像処理 + OCR エンドポイント。
 
 エンドポイント:
-- POST /images/upload          – 画像アップロード（202 + upload_id）
-- POST /images/process         – 四隅座標送信、OCR 実行、遠近補正、WebP 変換
-- GET  /images/{namecard_id}   – 名刺画像取得
+- POST /images/upload              – 画像アップロード（202 + upload_id）
+- POST /images/process             – 四隅座標送信、OCR 実行、遠近補正、WebP 変換
+- POST /images/process-additional  – 四隅座標送信、遠近補正+WebP変換（OCR なし）
+- GET  /images/{namecard_id}       – 名刺画像取得（name_card_images の position=0）
 - GET  /images/{namecard_id}/thumbnail – サムネイル取得
+- GET  /images/namecard/{namecard_id}  – 名刺の全画像一覧
 """
 
 from __future__ import annotations
@@ -25,7 +27,8 @@ from sqlalchemy import select
 
 from app.api.v1.deps import AuthUser, DbSession
 from app.core.config import get_settings
-from app.models import NameCard
+from app.models import NameCard, NameCardImage
+from app.schemas import NameCardImageResponse
 
 logger = logging.getLogger(__name__)
 
@@ -349,14 +352,60 @@ def process_image(
     }
 
 
-# ─── GET /images/{namecard_id} ───────────────────
-@router.get("/{namecard_id}")
-def get_image(
+# ─── POST /images/process-additional ─────────────
+@router.post("/process-additional")
+def process_additional_image(
+    body: ProcessRequest,
+    current_user: AuthUser,
+) -> dict[str, str]:
+    """追加画像の遠近補正 + WebP保存（OCR なし）。"""
+    entry = _uploads.get(body.upload_id)
+    if entry is None or entry["user_id"] != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Upload not found",
+        )
+
+    image_bytes: bytes = entry["image_bytes"]
+
+    logger.info(
+        "process_additional_image corners: %s",
+        [(c.x, c.y) for c in body.corners],
+    )
+
+    # 遠近補正
+    try:
+        corrected = _perspective_correction(image_bytes, body.corners)
+    except Exception:
+        _uploads.pop(body.upload_id, None)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Image processing failed.",
+        ) from None
+
+    # WebP 保存
+    settings = get_settings()
+    output_dir = Path(settings.image_dir)
+    filename_stem = str(uuid.uuid4())
+    image_path, thumbnail_path = _save_as_webp(corrected, output_dir, filename_stem)
+
+    # クリーンアップ
+    _uploads.pop(body.upload_id, None)
+
+    return {
+        "image_path": image_path,
+        "thumbnail_path": thumbnail_path,
+    }
+
+
+# ─── GET /images/namecard/{namecard_id} ─────────
+@router.get("/namecard/{namecard_id}")
+def get_namecard_images(
     namecard_id: int,
     current_user: AuthUser,
     db: DbSession,
-) -> Response:
-    """名刺画像（WebP）を取得する。"""
+) -> dict:
+    """名刺に紐づく全画像のリストを返す（position順）。"""
     nc = db.execute(
         select(NameCard).where(
             NameCard.id == namecard_id,
@@ -370,13 +419,49 @@ def get_image(
             detail="Namecard not found",
         )
 
-    if not nc.image_path:
+    return {
+        "images": [
+            NameCardImageResponse.model_validate(img).model_dump() for img in nc.images
+        ],
+    }
+
+
+# ─── GET /images/{namecard_id} ───────────────────
+@router.get("/{namecard_id}")
+def get_image(
+    namecard_id: int,
+    current_user: AuthUser,
+    db: DbSession,
+) -> Response:
+    """名刺画像（WebP）を取得する。name_card_images の position=0 を返す。"""
+    nc = db.execute(
+        select(NameCard).where(
+            NameCard.id == namecard_id,
+            NameCard.user_id == current_user.id,
+        )
+    ).scalar_one_or_none()
+
+    if nc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Namecard not found",
+        )
+
+    # name_card_images から position=0 の画像を取得
+    first_image = db.execute(
+        select(NameCardImage).where(
+            NameCardImage.name_card_id == namecard_id,
+            NameCardImage.position == 0,
+        )
+    ).scalar_one_or_none()
+
+    if first_image is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Image not found",
         )
 
-    image_file = Path(nc.image_path)
+    image_file = Path(first_image.image_path)
     if not image_file.exists():
         # ファイルが見つからない場合、ダミー画像をメモリ上で生成して返す
         img = Image.new("RGB", (910, 550), color="white")
@@ -401,7 +486,7 @@ def get_thumbnail(
     current_user: AuthUser,
     db: DbSession,
 ) -> Response:
-    """名刺サムネイル（WebP）を取得する。"""
+    """名刺サムネイル（WebP）を取得する。name_card_images の position=0 を返す。"""
     nc = db.execute(
         select(NameCard).where(
             NameCard.id == namecard_id,
@@ -415,14 +500,22 @@ def get_thumbnail(
             detail="Namecard not found",
         )
 
-    if not nc.image_path:
+    # name_card_images から position=0 の画像を取得
+    first_image = db.execute(
+        select(NameCardImage).where(
+            NameCardImage.name_card_id == namecard_id,
+            NameCardImage.position == 0,
+        )
+    ).scalar_one_or_none()
+
+    if first_image is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Image not found",
         )
 
     # image_path から thumbnail パスを導出
-    image_file = Path(nc.image_path)
+    image_file = Path(first_image.image_path)
     thumb_file = image_file.parent / "thumbnails" / image_file.name
 
     if not thumb_file.exists():
