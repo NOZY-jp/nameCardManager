@@ -63,9 +63,3 @@ Thumbs.db
 
 # --- Jupyter Notebook ---
 .ipynb_checkpoints
-
-# Uploaded images
-backend/uploads/
-
-# Test screenshots
-*.png

@@ -230,7 +230,6 @@ class ContactMethod(Base):
         ForeignKey("name_cards.id"), nullable=False
     )
     type: Mapped[str] = mapped_column(String(20), nullable=False)
-    label: Mapped[str] = mapped_column(String(50), nullable=False)
     value: Mapped[str] = mapped_column(String(255), nullable=False)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
 

@@ -173,7 +173,6 @@ async def import_json(
             cm = ContactMethod(
                 name_card_id=nc.id,
                 type=cm_data["type"],
-                label=cm_data.get("label", ""),
                 value=cm_data["value"],
                 is_primary=cm_data.get("is_primary", False),
             )

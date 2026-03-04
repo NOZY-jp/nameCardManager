@@ -281,7 +281,6 @@ def create_namecard(
         cm = ContactMethod(
             name_card_id=nc.id,
             type=cm_data.type,
-            label="",
             value=cm_data.value,
             is_primary=cm_data.is_primary,
         )
@@ -365,7 +364,6 @@ def update_namecard(
             cm = ContactMethod(
                 name_card_id=nc.id,
                 type=cm_data.type,
-                label="",
                 value=cm_data.value,
                 is_primary=cm_data.is_primary,
             )

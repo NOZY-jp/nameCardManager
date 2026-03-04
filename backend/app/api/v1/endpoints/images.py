@@ -4,7 +4,7 @@
 - POST /images/upload              – 画像アップロード（202 + upload_id）
 - POST /images/process             – 四隅座標送信、OCR 実行、遠近補正、WebP 変換
 - POST /images/process-additional  – 四隅座標送信、遠近補正+WebP変換（OCR なし）
-- GET  /images/{namecard_id}       – 名刺画像取得（name_card_images の position=0）
+- GET  /images/{namecard_id}       – 名刺画像取得（image_id指定時はその画像、未指定時はposition=0）
 - GET  /images/{namecard_id}/thumbnail – サムネイル取得
 - GET  /images/namecard/{namecard_id}  – 名刺の全画像一覧
 """
@@ -19,7 +19,7 @@ from typing import Any
 
 import cv2
 import numpy as np
-from fastapi import APIRouter, HTTPException, UploadFile, status
+from fastapi import APIRouter, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, Response
 from PIL import Image
 from pydantic import BaseModel, field_validator
@@ -432,8 +432,13 @@ def get_image(
     namecard_id: int,
     current_user: AuthUser,
     db: DbSession,
+    image_id: int | None = Query(default=None),
 ) -> Response:
-    """名刺画像（WebP）を取得する。name_card_images の position=0 を返す。"""
+    """名刺画像（WebP）を取得する。
+
+    image_id が指定された場合はその画像を返し、
+    指定されない場合は name_card_images の position=0 を返す。
+    """
     nc = db.execute(
         select(NameCard).where(
             NameCard.id == namecard_id,
@@ -447,21 +452,30 @@ def get_image(
             detail="Namecard not found",
         )
 
-    # name_card_images から position=0 の画像を取得
-    first_image = db.execute(
-        select(NameCardImage).where(
-            NameCardImage.name_card_id == namecard_id,
-            NameCardImage.position == 0,
-        )
-    ).scalar_one_or_none()
+    if image_id is not None:
+        # image_id が指定された場合、その画像を取得
+        target_image = db.execute(
+            select(NameCardImage).where(
+                NameCardImage.id == image_id,
+                NameCardImage.name_card_id == namecard_id,
+            )
+        ).scalar_one_or_none()
+    else:
+        # デフォルト: position=0 の画像を取得
+        target_image = db.execute(
+            select(NameCardImage).where(
+                NameCardImage.name_card_id == namecard_id,
+                NameCardImage.position == 0,
+            )
+        ).scalar_one_or_none()
 
-    if first_image is None:
+    if target_image is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Image not found",
         )
 
-    image_file = Path(first_image.image_path)
+    image_file = Path(target_image.image_path)
     if not image_file.exists():
         # ファイルが見つからない場合、ダミー画像をメモリ上で生成して返す
         img = Image.new("RGB", (910, 550), color="white")
