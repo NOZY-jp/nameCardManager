@@ -305,6 +305,8 @@ def process_image(
 
     image_bytes: bytes = entry["image_bytes"]
 
+    logger.info("process_image corners: %s", [(c.x, c.y) for c in body.corners])
+
     # OCR 実行（同期）
     try:
         ocr_result = process_image_ocr(image_bytes)

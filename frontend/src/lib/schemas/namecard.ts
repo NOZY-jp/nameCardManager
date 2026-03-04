@@ -10,6 +10,7 @@ export const namecardCreateSchema = z.object({
   department: z.string().optional(),
   position: z.string().optional(),
   memo: z.string().optional(),
+  image_path: z.string().optional(),
   contact_methods: z.array(contactMethodSchema).optional(),
   relationship_ids: z.array(z.number()).optional(),
   tag_ids: z.array(z.number()).optional(),

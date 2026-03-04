@@ -55,6 +55,7 @@ export interface NameCardCreateData {
   position?: string;
   memo?: string;
   met_notes?: string;
+  image_path?: string;
   contact_methods?: Omit<ContactMethod, "id">[];
   relationship_ids?: number[];
   tag_ids?: number[];

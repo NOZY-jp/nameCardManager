@@ -2,27 +2,91 @@
 
 import { Camera, Upload } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-import { imageApi } from "@/lib/api/images";
+import { imageApi, type ProcessImageResponse } from "@/lib/api/images";
 import {
   CONTACT_METHOD_TYPES,
   type ContactMethodFormData,
 } from "@/lib/schemas/contact-method";
 import type { NamecardCreateFormData } from "@/lib/schemas/namecard";
 import { Button } from "../ui/button";
+import type { GuideRect } from "./CameraCapture";
 import { type CornerPoint, CornerSelector } from "./CornerSelector";
 import styles from "./ImageUploadOCR.module.scss";
 
 type FlowStep = "idle" | "corners" | "processing";
 
+/** Business card aspect ratio (landscape) — matches CameraCapture guideFrame */
+const CARD_ASPECT = 1.75;
+
+function getDefaultCornersForFile(
+  width: number,
+  height: number,
+  guideRect?: GuideRect,
+): CornerPoint[] {
+  if (guideRect) {
+    return [
+      { x: guideRect.x, y: guideRect.y },
+      { x: guideRect.x + guideRect.width, y: guideRect.y },
+      { x: guideRect.x + guideRect.width, y: guideRect.y + guideRect.height },
+      { x: guideRect.x, y: guideRect.y + guideRect.height },
+    ];
+  }
+
+  const maxW = width * 0.8;
+  const maxH = height * 0.8;
+  const frameW = Math.min(maxW, maxH * CARD_ASPECT);
+  const frameH = frameW / CARD_ASPECT;
+  const x0 = (width - frameW) / 2;
+  const y0 = (height - frameH) / 2;
+
+  return [
+    { x: x0, y: y0 },
+    { x: x0 + frameW, y: y0 },
+    { x: x0 + frameW, y: y0 + frameH },
+    { x: x0, y: y0 + frameH },
+  ];
+}
+
+async function dataUrlToFile(dataUrl: string, filename: string): Promise<File> {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  return new File([blob], filename, { type: blob.type });
+}
+
+function getImageNaturalSize(
+  dataUrl: string,
+): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () =>
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
 interface ImageUploadOCRProps {
+  guideRect?: GuideRect;
   onComplete: (ocrData: Partial<NamecardCreateFormData>) => void;
 }
 
-export function ImageUploadOCR({ onComplete }: ImageUploadOCRProps) {
+export function ImageUploadOCR({ guideRect, onComplete }: ImageUploadOCRProps) {
   const [step, setStep] = useState<FlowStep>("idle");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const backgroundOcrRef = useRef<Promise<ProcessImageResponse> | null>(null);
+
+  const startBackgroundOcr = useCallback((dataUrl: string) => {
+    const ocrPromise = (async () => {
+      const file = await dataUrlToFile(dataUrl, "upload.jpg");
+      const { upload_id } = await imageApi.upload(file);
+      const { width, height } = await getImageNaturalSize(dataUrl);
+      const defaultCorners = getDefaultCornersForFile(width, height, guideRect);
+      return imageApi.process({ upload_id, corners: defaultCorners });
+    })();
+    backgroundOcrRef.current = ocrPromise;
+  }, [guideRect]);
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,8 +101,10 @@ export function ImageUploadOCR({ onComplete }: ImageUploadOCRProps) {
       setError(null);
       const reader = new FileReader();
       reader.onload = () => {
-        setSelectedImage(reader.result as string);
+        const dataUrl = reader.result as string;
+        setSelectedImage(dataUrl);
         setStep("corners");
+        startBackgroundOcr(dataUrl);
       };
       reader.onerror = () => {
         setError("ファイルの読み込みに失敗しました");
@@ -48,7 +114,7 @@ export function ImageUploadOCR({ onComplete }: ImageUploadOCRProps) {
       // Reset input so the same file can be re-selected
       e.target.value = "";
     },
-    [],
+    [startBackgroundOcr],
   );
 
   const handleCornersConfirm = useCallback(
@@ -59,21 +125,21 @@ export function ImageUploadOCR({ onComplete }: ImageUploadOCRProps) {
       setError(null);
 
       try {
-        // Convert data URL to File
-        const res = await fetch(selectedImage);
-        const blob = await res.blob();
-        const file = new File([blob], "upload.jpg", { type: blob.type });
+        const ocrPromise = backgroundOcrRef.current;
+        if (!ocrPromise) {
+          throw new Error("OCR processing not started");
+        }
+        const backgroundResult = await ocrPromise;
 
-        // Upload image
+        const file = await dataUrlToFile(selectedImage, "upload.jpg");
         const { upload_id } = await imageApi.upload(file);
-
-        // Process with corners
-        const { ocr_result } = await imageApi.process({
+        const { image_path } = await imageApi.process({
           upload_id,
           corners,
         });
 
-        // Map OCR result to form data
+        const ocr_result = backgroundResult.ocr_result;
+
         const formData: Partial<NamecardCreateFormData> = {
           first_name: ocr_result.first_name ?? "",
           last_name: ocr_result.last_name ?? "",
@@ -83,6 +149,7 @@ export function ImageUploadOCR({ onComplete }: ImageUploadOCRProps) {
           department: ocr_result.department ?? "",
           position: ocr_result.position ?? "",
           memo: ocr_result.memo ?? "",
+          image_path: image_path ?? undefined,
           contact_methods: ocr_result.contact_methods
             ?.map((cm) => {
               const type = cm.type as ContactMethodFormData["type"];
@@ -102,6 +169,7 @@ export function ImageUploadOCR({ onComplete }: ImageUploadOCRProps) {
 
         setStep("idle");
         setSelectedImage(null);
+        backgroundOcrRef.current = null;
         onComplete(formData);
       } catch (_err) {
         setError("OCR処理に失敗しました。もう一度お試しください。");
@@ -115,6 +183,7 @@ export function ImageUploadOCR({ onComplete }: ImageUploadOCRProps) {
     setSelectedImage(null);
     setStep("idle");
     setError(null);
+    backgroundOcrRef.current = null;
   }, []);
 
   const handleUploadClick = useCallback(() => {
@@ -127,6 +196,7 @@ export function ImageUploadOCR({ onComplete }: ImageUploadOCRProps) {
         {error && <p className={styles.error}>{error}</p>}
         <CornerSelector
           image={selectedImage}
+          guideRect={guideRect}
           onConfirm={handleCornersConfirm}
           onBack={handleBackToUpload}
         />

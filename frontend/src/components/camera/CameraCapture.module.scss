@@ -46,9 +46,12 @@
   position: relative;
   // Business card ratio 1.75:1 — 80% viewport width, capped at 480px
   width: min(80vw, 480px);
+  max-width: 480px;
+  max-height: 100%;
   aspect-ratio: 1.75 / 1;
+  margin: 0 auto;
   border: 2px solid rgba(255, 255, 255, 0.6);
-  border-radius: $radius-lg;
+  border-radius: $radius-md;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
 }
 

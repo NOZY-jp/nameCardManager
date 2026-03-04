@@ -88,6 +88,7 @@ export function NameCardForm({
       department: defaultValues?.department ?? "",
       position: defaultValues?.position ?? "",
       memo: defaultValues?.memo ?? "",
+      image_path: defaultValues?.image_path ?? "",
       contact_methods:
         defaultValues?.contact_methods?.map((cm) => ({
           type: cm.type as (typeof CONTACT_METHOD_TYPES)[number],
@@ -119,6 +120,7 @@ export function NameCardForm({
       onSubmit={handleSubmit(handleFormSubmit)}
       noValidate
     >
+      <input type="hidden" {...register("image_path")} />
       <div className={styles.fieldRow}>
         <div className={styles.fieldGroup}>
           <Label htmlFor="last_name" required>

@@ -53,7 +53,7 @@ class UserResponse(BaseModel):
 
 
 class ContactMethodType(StrEnum):
-    """連絡先の種類（17種）。"""
+    """連絡先の種類（24種）。"""
 
     email = "email"
     tel = "tel"
@@ -62,15 +62,22 @@ class ContactMethodType(StrEnum):
     website = "website"
     linkedin = "linkedin"
     twitter = "twitter"
+    x = "x"
     facebook = "facebook"
     instagram = "instagram"
     line = "line"
+    youtube = "youtube"
+    discord = "discord"
+    booth = "booth"
+    github = "github"
+    tiktok = "tiktok"
     wechat = "wechat"
     whatsapp = "whatsapp"
     telegram = "telegram"
     skype = "skype"
     zoom = "zoom"
     teams = "teams"
+    address = "address"
     other = "other"
 
 

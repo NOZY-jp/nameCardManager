@@ -62,7 +62,12 @@ export function Select({
       onValueChange?.(newValue);
       setOpen(false);
       if (resetOnSelect) {
-        queueMicrotask(() => setSelectedLabel(""));
+        queueMicrotask(() => {
+          setSelectedLabel("");
+          if (!isControlled) {
+            setInternalValue("");
+          }
+        });
       }
     },
     [isControlled, onValueChange, resetOnSelect],
@@ -146,13 +151,15 @@ export function SelectTrigger({
 
 // ── SelectValue ─────────────────────────────────────────
 export function SelectValue({ placeholder }: { placeholder?: string }) {
-  const { selectedLabel } = useContext(SelectContext);
+  const { selectedLabel, value } = useContext(SelectContext);
 
-  if (!selectedLabel) {
+  const display = selectedLabel || value;
+
+  if (!display) {
     return <span className={styles.placeholder}>{placeholder}</span>;
   }
 
-  return <span>{selectedLabel}</span>;
+  return <span>{display}</span>;
 }
 
 // ── SelectContent ───────────────────────────────────────

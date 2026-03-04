@@ -1,8 +1,8 @@
 "use client";
 
 import { CreditCard } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { AuthImage } from "@/components/ui/auth-image";
 import type { NameCard } from "@/lib/api/namecards";
 import styles from "./NameCardItem.module.scss";
 
@@ -25,7 +25,6 @@ export function NameCardItem({ card }: NameCardItemProps) {
   };
 
   const fullName = `${card.last_name} ${card.first_name}`;
-  const imageSrc = card.image_path || card.image_front_url || null;
 
   const companyParts = [
     card.company_name,
@@ -42,8 +41,13 @@ export function NameCardItem({ card }: NameCardItemProps) {
       onKeyDown={handleKeyDown}
     >
       <div className={styles.thumbnail}>
-        {imageSrc ? (
-          <Image src={imageSrc} alt={fullName} width={80} height={50} />
+        {card.image_path ? (
+          <AuthImage
+            apiPath={`/images/${card.id}/thumbnail`}
+            alt={fullName}
+            width={80}
+            height={50}
+          />
         ) : (
           <div
             className={styles.placeholderIcon}

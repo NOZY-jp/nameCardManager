@@ -25,6 +25,9 @@ const CORNER_LABELS = [
   "bottomLeft",
 ] as const;
 
+/** Business card aspect ratio (landscape) — matches CameraCapture guideFrame */
+const CARD_ASPECT = 1.75;
+
 function getDefaultCorners(
   width: number,
   height: number,
@@ -38,12 +41,19 @@ function getDefaultCorners(
       { x: guideRect.x, y: guideRect.y + guideRect.height },
     ];
   }
-  const pad = 0.05;
+
+  const maxW = width * 0.8;
+  const maxH = height * 0.8;
+  const frameW = Math.min(maxW, maxH * CARD_ASPECT);
+  const frameH = frameW / CARD_ASPECT;
+  const x0 = (width - frameW) / 2;
+  const y0 = (height - frameH) / 2;
+
   return [
-    { x: width * pad, y: height * pad },
-    { x: width * (1 - pad), y: height * pad },
-    { x: width * (1 - pad), y: height * (1 - pad) },
-    { x: width * pad, y: height * (1 - pad) },
+    { x: x0, y: y0 },
+    { x: x0 + frameW, y: y0 },
+    { x: x0 + frameW, y: y0 + frameH },
+    { x: x0, y: y0 + frameH },
   ];
 }
 

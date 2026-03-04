@@ -1,8 +1,8 @@
 "use client";
 
 import { ArrowLeft, Edit, Trash2 } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { AuthImage } from "@/components/ui/auth-image";
 import { Button } from "@/components/ui/button";
 import type { NameCard } from "@/lib/api/namecards";
 import styles from "./NameCardDetail.module.scss";
@@ -25,8 +25,6 @@ export function NameCardDetail({
     card.last_name_kana || card.first_name_kana
       ? `${card.last_name_kana ?? ""} ${card.first_name_kana ?? ""}`.trim()
       : null;
-
-  const imageSrc = card.image_front_url || card.image_path || null;
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("ja-JP", {
@@ -64,13 +62,14 @@ export function NameCardDetail({
         </div>
       </div>
 
-      {imageSrc && (
+      {card.image_path && (
         <div className={styles.imageSection}>
-          <Image
-            src={imageSrc}
+          <AuthImage
+            apiPath={`/images/${card.id}`}
             alt={`${fullName}の名刺`}
             width={600}
             height={375}
+            style={{ maxWidth: "100%", height: "auto" }}
           />
         </div>
       )}
