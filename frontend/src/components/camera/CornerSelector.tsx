@@ -3,6 +3,7 @@
 import { RotateCcw } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { GuideRect } from "./CameraCapture";
 import styles from "./CornerSelector.module.scss";
 
 export interface CornerPoint {
@@ -12,6 +13,7 @@ export interface CornerPoint {
 
 interface CornerSelectorProps {
   image: string;
+  guideRect?: GuideRect;
   onConfirm: (corners: CornerPoint[]) => void;
   onBack?: () => void;
 }
@@ -23,25 +25,38 @@ const CORNER_LABELS = [
   "bottomLeft",
 ] as const;
 
-function getDefaultCorners(width: number, height: number): CornerPoint[] {
+function getDefaultCorners(
+  width: number,
+  height: number,
+  guideRect?: GuideRect,
+): CornerPoint[] {
+  if (guideRect) {
+    return [
+      { x: guideRect.x, y: guideRect.y },
+      { x: guideRect.x + guideRect.width, y: guideRect.y },
+      { x: guideRect.x + guideRect.width, y: guideRect.y + guideRect.height },
+      { x: guideRect.x, y: guideRect.y + guideRect.height },
+    ];
+  }
   const pad = 0.05;
   return [
-    { x: width * pad, y: height * pad }, // topLeft
-    { x: width * (1 - pad), y: height * pad }, // topRight
-    { x: width * (1 - pad), y: height * (1 - pad) }, // bottomRight
-    { x: width * pad, y: height * (1 - pad) }, // bottomLeft
+    { x: width * pad, y: height * pad },
+    { x: width * (1 - pad), y: height * pad },
+    { x: width * (1 - pad), y: height * (1 - pad) },
+    { x: width * pad, y: height * (1 - pad) },
   ];
 }
 
 export function CornerSelector({
   image,
+  guideRect,
   onConfirm,
   onBack,
 }: CornerSelectorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [imageSize, setImageSize] = useState({ width: 400, height: 300 });
   const [corners, setCorners] = useState<CornerPoint[]>(() =>
-    getDefaultCorners(400, 300),
+    getDefaultCorners(400, 300, guideRect),
   );
   const [dragging, setDragging] = useState<number | null>(null);
 
@@ -51,9 +66,9 @@ export function CornerSelector({
       const w = img.naturalWidth || img.width;
       const h = img.naturalHeight || img.height;
       setImageSize({ width: w, height: h });
-      setCorners(getDefaultCorners(w, h));
+      setCorners(getDefaultCorners(w, h, guideRect));
     },
-    [],
+    [guideRect],
   );
 
   const getPointerPosition = useCallback(
@@ -104,8 +119,8 @@ export function CornerSelector({
   }, []);
 
   const handleReset = useCallback(() => {
-    setCorners(getDefaultCorners(imageSize.width, imageSize.height));
-  }, [imageSize]);
+    setCorners(getDefaultCorners(imageSize.width, imageSize.height, guideRect));
+  }, [imageSize, guideRect]);
 
   const handleConfirm = useCallback(() => {
     onConfirm(corners);

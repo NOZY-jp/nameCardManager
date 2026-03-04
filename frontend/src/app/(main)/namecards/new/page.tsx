@@ -23,11 +23,11 @@ export default function NewNameCardPage() {
   const [relationships, setRelationships] = useState<
     Array<{
       id: string;
-      node_name: string;
+      name: string;
       parent_id?: string | null;
       children?: Array<{
         id: string;
-        node_name: string;
+        name: string;
         parent_id?: string | null;
       }>;
     }>

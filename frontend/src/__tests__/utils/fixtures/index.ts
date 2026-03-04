@@ -25,7 +25,7 @@ export const sampleNamecard = {
   relationships: [
     {
       id: "rel-001",
-      node_name: "建築士会",
+      name: "建築士会",
       parent_id: null,
     },
   ],
@@ -58,17 +58,17 @@ export const sampleNamecardMinimal = {
 export const sampleRelationshipTree = [
   {
     id: "rel-001",
-    node_name: "建築士会",
+    name: "建築士会",
     parent_id: null,
     children: [
       {
         id: "rel-002",
-        node_name: "桑名支部",
+        name: "桑名支部",
         parent_id: "rel-001",
         children: [
           {
             id: "rel-003",
-            node_name: "青年会長",
+            name: "青年会長",
             parent_id: "rel-002",
             children: [],
           },
@@ -78,17 +78,17 @@ export const sampleRelationshipTree = [
   },
   {
     id: "rel-010",
-    node_name: "ゴルフ仲間",
+    name: "ゴルフ仲間",
     parent_id: null,
     children: [],
   },
 ];
 
 export const sampleFlatRelationships = [
-  { id: "rel-001", node_name: "建築士会", parent_id: null },
-  { id: "rel-002", node_name: "桑名支部", parent_id: "rel-001" },
-  { id: "rel-003", node_name: "青年会長", parent_id: "rel-002" },
-  { id: "rel-010", node_name: "ゴルフ仲間", parent_id: null },
+  { id: "rel-001", name: "建築士会", parent_id: null },
+  { id: "rel-002", name: "桑名支部", parent_id: "rel-001" },
+  { id: "rel-003", name: "青年会長", parent_id: "rel-002" },
+  { id: "rel-010", name: "ゴルフ仲間", parent_id: null },
 ];
 
 // ─── Tags ────────────────────────────────────────────────

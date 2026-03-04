@@ -62,11 +62,6 @@ export function NameCardItem({ card }: NameCardItemProps) {
         )}
 
         <div className={styles.meta}>
-          {card.relationships?.map((rel) => (
-            <span key={rel.id} className={styles.relationship}>
-              {rel.full_path || rel.node_name}
-            </span>
-          ))}
           {card.tags?.map((tag) => (
             <span key={tag.id} className={styles.tag}>
               {tag.name}

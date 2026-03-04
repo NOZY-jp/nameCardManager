@@ -23,7 +23,7 @@ import styles from "./NameCardForm.module.scss";
 
 interface RelationshipOption {
   id: string;
-  node_name: string;
+  name: string;
   parent_id?: string | null;
   full_path?: string;
   children?: RelationshipOption[];
@@ -53,11 +53,11 @@ function flattenRelationships(
   const result: Array<{ id: string; label: string }> = [];
   for (const node of nodes) {
     const label = parentName
-      ? `${parentName}/${node.node_name}`
-      : node.node_name;
+      ? `${parentName}/${node.name}`
+      : node.name;
     result.push({ id: node.id, label });
     if (node.children?.length) {
-      result.push(...flattenRelationships(node.children, node.node_name));
+      result.push(...flattenRelationships(node.children, node.name));
     }
   }
   return result;
@@ -74,6 +74,8 @@ export function NameCardForm({
     register,
     handleSubmit,
     control,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<NamecardCreateFormData>({
     resolver: zodResolver(namecardCreateSchema),
@@ -142,11 +144,11 @@ export function NameCardForm({
 
       <div className={styles.fieldRow}>
         <div className={styles.fieldGroup}>
-          <Label htmlFor="last_name_kana">カナ</Label>
+          <Label htmlFor="last_name_kana">セイ</Label>
           <Input id="last_name_kana" {...register("last_name_kana")} />
         </div>
         <div className={styles.fieldGroup}>
-          <Label htmlFor="first_name_kana">ふりがな</Label>
+          <Label htmlFor="first_name_kana">メイ</Label>
           <Input id="first_name_kana" {...register("first_name_kana")} />
         </div>
       </div>
@@ -195,20 +197,13 @@ export function NameCardForm({
           >
             <div className={styles.contactType}>
               <Select
-                value={field.type}
+                value={watch(`contact_methods.${index}.type`)}
                 onValueChange={(val) => {
-                  const input = document.querySelector(
-                    `input[name="contact_methods.${index}.type"]`,
-                  ) as HTMLInputElement | null;
-                  if (input) {
-                    const nativeInputValueSetter =
-                      Object.getOwnPropertyDescriptor(
-                        window.HTMLInputElement.prototype,
-                        "value",
-                      )?.set;
-                    nativeInputValueSetter?.call(input, val);
-                    input.dispatchEvent(new Event("input", { bubbles: true }));
-                  }
+                  setValue(
+                    `contact_methods.${index}.type` as const,
+                    val as (typeof CONTACT_METHOD_TYPES)[number],
+                    { shouldValidate: true, shouldDirty: true },
+                  );
                 }}
               >
                 <SelectTrigger aria-label="タイプ">
@@ -222,10 +217,6 @@ export function NameCardForm({
                   ))}
                 </SelectContent>
               </Select>
-              <input
-                type="hidden"
-                {...register(`contact_methods.${index}.type`)}
-              />
             </div>
 
             <div className={styles.contactValue}>
@@ -250,101 +241,131 @@ export function NameCardForm({
         ))}
       </div>
 
-      {relationships.length > 0 && (
-        <div className={styles.selectorSection}>
-          <Label>所属・関係</Label>
-          <Select
-            resetOnSelect
-            onValueChange={(val) => {
-              if (!selectedRelIds.includes(val)) {
-                setSelectedRelIds((prev) => [...prev, val]);
-              }
-            }}
-          >
-            <SelectTrigger aria-label="所属">
-              <SelectValue placeholder="所属を選択" />
-            </SelectTrigger>
-            <SelectContent>
-              {flatRelationships.map((rel) => (
-                <SelectItem key={rel.id} value={rel.id}>
-                  {rel.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {selectedRelIds.length > 0 && (
-            <div className={styles.selectedItems}>
-              {selectedRelIds.map((id) => {
-                const rel = flatRelationships.find((r) => r.id === id);
-                return (
-                  <span key={id} className={styles.selectedChip}>
-                    {rel?.label}
-                    <button
-                      type="button"
-                      className={styles.chipRemove}
-                      onClick={() =>
-                        setSelectedRelIds((prev) =>
-                          prev.filter((x) => x !== id),
-                        )
-                      }
-                    >
-                      <X size={12} />
-                    </button>
-                  </span>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+      <div className={styles.selectorSection}>
+        <Label>所属・関係</Label>
+        {relationships.length > 0 ? (
+          <>
+            <Select
+              resetOnSelect
+              onValueChange={(val) => {
+                if (!selectedRelIds.includes(val)) {
+                  const newIds = [...selectedRelIds, val];
+                  setSelectedRelIds(newIds);
+                  setValue("relationship_ids", newIds.map(Number), {
+                    shouldValidate: true,
+                  });
+                }
+              }}
+            >
+              <SelectTrigger aria-label="所属">
+                <SelectValue placeholder="所属を選択" />
+              </SelectTrigger>
+              <SelectContent>
+                {flatRelationships.map((rel) => (
+                  <SelectItem key={rel.id} value={rel.id}>
+                    {rel.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedRelIds.length > 0 && (
+              <div className={styles.selectedItems}>
+                {selectedRelIds.map((id) => {
+                  const rel = flatRelationships.find((r) => r.id === id);
+                  return (
+                    <span key={id} className={styles.selectedChip}>
+                      {rel?.label}
+                      <button
+                        type="button"
+                        className={styles.chipRemove}
+                        onClick={() => {
+                          const newIds = selectedRelIds.filter(
+                            (x) => x !== id,
+                          );
+                          setSelectedRelIds(newIds);
+                          setValue(
+                            "relationship_ids",
+                            newIds.map(Number),
+                          );
+                        }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          <p className={styles.emptyHint}>
+            所属・関係がありません。
+            <a href="/relationships">所属・関係管理</a>
+            で作成できます。
+          </p>
+        )}
+      </div>
 
-      {tags.length > 0 && (
-        <div className={styles.selectorSection}>
-          <Label>タグ</Label>
-          <Select
-            resetOnSelect
-            onValueChange={(val) => {
-              if (!selectedTagIds.includes(val)) {
-                setSelectedTagIds((prev) => [...prev, val]);
-              }
-            }}
-          >
-            <SelectTrigger aria-label="タグ">
-              <SelectValue placeholder="タグを選択" />
-            </SelectTrigger>
-            <SelectContent>
-              {tags.map((tag) => (
-                <SelectItem key={tag.id} value={tag.id}>
-                  {tag.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {selectedTagIds.length > 0 && (
-            <div className={styles.selectedItems}>
-              {selectedTagIds.map((id) => {
-                const tag = tags.find((t) => t.id === id);
-                return (
-                  <span key={id} className={styles.selectedChip}>
-                    {tag?.name}
-                    <button
-                      type="button"
-                      className={styles.chipRemove}
-                      onClick={() =>
-                        setSelectedTagIds((prev) =>
-                          prev.filter((x) => x !== id),
-                        )
-                      }
-                    >
-                      <X size={12} />
-                    </button>
-                  </span>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+      <div className={styles.selectorSection}>
+        <Label>タグ</Label>
+        {tags.length > 0 ? (
+          <>
+            <Select
+              resetOnSelect
+              onValueChange={(val) => {
+                if (!selectedTagIds.includes(val)) {
+                  const newIds = [...selectedTagIds, val];
+                  setSelectedTagIds(newIds);
+                  setValue("tag_ids", newIds.map(Number), {
+                    shouldValidate: true,
+                  });
+                }
+              }}
+            >
+              <SelectTrigger aria-label="タグ">
+                <SelectValue placeholder="タグを選択" />
+              </SelectTrigger>
+              <SelectContent>
+                {tags.map((tag) => (
+                  <SelectItem key={tag.id} value={tag.id}>
+                    {tag.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedTagIds.length > 0 && (
+              <div className={styles.selectedItems}>
+                {selectedTagIds.map((id) => {
+                  const tag = tags.find((t) => t.id === id);
+                  return (
+                    <span key={id} className={styles.selectedChip}>
+                      {tag?.name}
+                      <button
+                        type="button"
+                        className={styles.chipRemove}
+                        onClick={() => {
+                          const newIds = selectedTagIds.filter(
+                            (x) => x !== id,
+                          );
+                          setSelectedTagIds(newIds);
+                          setValue("tag_ids", newIds.map(Number));
+                        }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          <p className={styles.emptyHint}>
+            タグがありません。<a href="/tags">タグ管理</a>
+            で作成できます。
+          </p>
+        )}
+      </div>
 
       <div className={styles.formActions}>
         <Button type="submit">{submitLabel}</Button>

@@ -5,14 +5,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import styles from "./CameraCapture.module.scss";
 
+export interface GuideRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface CameraCaptureProps {
-  onCapture: (imageData: string) => void;
+  onCapture: (imageData: string, guideRect?: GuideRect) => void;
   onClose?: () => void;
 }
 
 export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const guideFrameRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +84,7 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
   const handleCapture = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
+    const guideFrame = guideFrameRef.current;
     if (!video || !canvas) return;
 
     canvas.width = video.videoWidth || 640;
@@ -90,8 +99,26 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
     setTimeout(() => setFlash(false), 200);
 
     const imageData = canvas.toDataURL("image/jpeg", 0.92);
+
+    // Compute guideRect in video-pixel coordinates
+    let guideRect: GuideRect | undefined;
+    if (guideFrame) {
+      const videoRect = video.getBoundingClientRect();
+      const frameRect = guideFrame.getBoundingClientRect();
+
+      const scaleX = (video.videoWidth || 640) / videoRect.width;
+      const scaleY = (video.videoHeight || 480) / videoRect.height;
+
+      guideRect = {
+        x: (frameRect.left - videoRect.left) * scaleX,
+        y: (frameRect.top - videoRect.top) * scaleY,
+        width: frameRect.width * scaleX,
+        height: frameRect.height * scaleY,
+      };
+    }
+
     stopStream();
-    onCapture(imageData);
+    onCapture(imageData, guideRect);
   }, [onCapture, stopStream]);
 
   const handleClose = useCallback(() => {
@@ -133,7 +160,7 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
           data-testid="camera-guide"
           aria-label="撮影ガイド"
         >
-          <div className={styles.guideFrame}>
+          <div ref={guideFrameRef} className={styles.guideFrame}>
             <span className={`${styles.corner} ${styles.cornerTL}`} />
             <span className={`${styles.corner} ${styles.cornerTR}`} />
             <span className={`${styles.corner} ${styles.cornerBL}`} />

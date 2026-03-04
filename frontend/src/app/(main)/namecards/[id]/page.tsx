@@ -9,6 +9,8 @@ import {
   type NameCard,
   updateNameCard,
 } from "@/lib/api/namecards";
+import { getRelationships } from "@/lib/api/relationships";
+import { getTags } from "@/lib/api/tags";
 import type { NamecardCreateFormData } from "@/lib/schemas/namecard";
 
 export default function NameCardDetailPage() {
@@ -20,6 +22,19 @@ export default function NameCardDetailPage() {
   const [card, setCard] = useState<NameCard | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
+  const [relationships, setRelationships] = useState<
+    Array<{
+      id: string;
+      name: string;
+      parent_id?: string | null;
+      children?: Array<{
+        id: string;
+        name: string;
+        parent_id?: string | null;
+      }>;
+    }>
+  >([]);
+  const [tags, setTags] = useState<Array<{ id: string; name: string }>>([]);
 
   const fetchCard = useCallback(async () => {
     if (!isNumericId) return;
@@ -35,6 +50,17 @@ export default function NameCardDetailPage() {
   useEffect(() => {
     fetchCard();
   }, [fetchCard]);
+
+  useEffect(() => {
+    Promise.all([getRelationships(), getTags()])
+      .then(([rels, tgs]) => {
+        setRelationships(rels);
+        setTags(tgs);
+      })
+      .catch(() => {
+        // Options are optional; edit still works without them
+      });
+  }, []);
 
   if (!isNumericId) {
     notFound();
@@ -67,6 +93,8 @@ export default function NameCardDetailPage() {
         open={editOpen}
         onSave={handleSave}
         onClose={() => setEditOpen(false)}
+        relationships={relationships}
+        tags={tags}
       />
     </>
   );

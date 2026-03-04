@@ -56,8 +56,8 @@ THUMBNAIL_SIZE = (300, 188)
 class CornerPoint(BaseModel):
     """四隅の 1 点。"""
 
-    x: int
-    y: int
+    x: float
+    y: float
 
 
 class ProcessRequest(BaseModel):
@@ -95,6 +95,10 @@ def process_image_ocr(image_bytes: bytes) -> dict[str, Any]:
             "last_name": "",
             "first_name_kana": None,
             "last_name_kana": None,
+            "company_name": None,
+            "department": None,
+            "position": None,
+            "memo": None,
             "contact_methods": [],
         }
 
@@ -107,11 +111,14 @@ def process_image_ocr(image_bytes: bytes) -> dict[str, Any]:
         フィールド:
         - first_name: 名（文字列）
         - last_name: 姓（文字列）
-        - first_name_kana: 名のふりがな（文字列 or null）
-        - last_name_kana: 姓のふりがな（文字列 or null）
+        - first_name_kana: 名のフリガナ（文字列 *予想でよい）
+        - last_name_kana: 姓のフリガナ（文字列 *予想でよい）
+        - company_name: 会社名（文字列 or null）
+        - department: 部署名（文字列 or null）
+        - position: 役職（文字列 or null）
+        - memo: その他の情報（contact_methodsのどれにも当てはまらない詳細 文字列 or null）
         - contact_methods: 連絡先の配列。各要素は {type, value, is_primary} 。
-          type は email, tel, mobile, fax, website, linkedin, twitter, facebook,
-          instagram, line, wechat, whatsapp, telegram, skype, zoom, teams, other のいずれか。
+          type は email, tel, mobile, fax, website, x, instagram, youtube, discord, booth, github, linkedin, facebook, line, tiktok, address, other のいずれか。
           is_primary は最初の連絡先のみ true。
 
         JSON のみを返してください。マークダウンコードブロックは不要です。"""
@@ -155,6 +162,10 @@ def process_image_ocr(image_bytes: bytes) -> dict[str, Any]:
             "last_name": "",
             "first_name_kana": None,
             "last_name_kana": None,
+            "company_name": None,
+            "department": None,
+            "position": None,
+            "memo": None,
             "contact_methods": [],
         }
 

@@ -144,6 +144,16 @@
   }
 }
 
+.emptyHint {
+  font-size: $text-sm;
+  color: var(--color-foreground-muted);
+
+  a {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+}
+
 // ─── Actions ─────────────────────────────────────────────
 
 .formActions {

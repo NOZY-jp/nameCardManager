@@ -13,6 +13,7 @@ dependencies = [
   "bcrypt<5",
   "opencv-python-headless>=4.13.0.92",
   "pillow>=12.1.1",
+  "google-genai>=1.0.0",
 ]
 name = "backend"
 version = "0.1.0"

@@ -105,11 +105,31 @@ export function NameCardDetail({
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>関係</h2>
           <div className={styles.relationshipList}>
-            {card.relationships.map((rel) => (
-              <span key={rel.id} className={styles.relationship}>
-                {rel.full_path || rel.node_name}
-              </span>
-            ))}
+            {card.relationships.map((rel) => {
+              const parts = (rel.full_path || rel.name || "").split("/");
+              return (
+                <div key={rel.id} className={styles.relationshipPath}>
+                  {parts.map((part, idx) => (
+                    <span key={`${rel.id}-${part}`} className={styles.relationshipSegment}>
+                      {idx > 0 && (
+                        <span className={styles.relationshipSeparator}>
+                          /
+                        </span>
+                      )}
+                      <span
+                        className={
+                          idx === parts.length - 1
+                            ? styles.relationshipLeaf
+                            : styles.relationshipAncestor
+                        }
+                      >
+                        {part}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </section>
       )}

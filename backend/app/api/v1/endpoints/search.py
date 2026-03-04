@@ -23,6 +23,24 @@ from app.schemas import (
 router = APIRouter()
 
 
+def _normalize_kana(text: str) -> tuple[str, str]:
+    """ひらがな版とカタカナ版の両方を返す。"""
+    hiragana = ""
+    katakana = ""
+    for ch in text:
+        cp = ord(ch)
+        if 0x30A1 <= cp <= 0x30F6:  # カタカナ→ひらがな
+            hiragana += chr(cp - 0x60)
+            katakana += ch
+        elif 0x3041 <= cp <= 0x3096:  # ひらがな→カタカナ
+            hiragana += ch
+            katakana += chr(cp + 0x60)
+        else:
+            hiragana += ch
+            katakana += ch
+    return hiragana, katakana
+
+
 def _parse_comma_ids(raw: str) -> list[int]:
     """カンマ区切り文字列を int リストに変換する。
 
@@ -149,14 +167,21 @@ def search_namecards(
     # ── テキスト検索 ──
     if q and q.strip():
         keyword = q.strip()
+        hiragana_kw, katakana_kw = _normalize_kana(keyword)
+
         like_pattern = f"%{keyword}%"
+        like_hiragana = f"%{hiragana_kw}%"
+        like_katakana = f"%{katakana_kw}%"
 
         # name_cards 自身のカラムに対する LIKE 条件
         text_conditions = [
             NameCard.first_name.ilike(like_pattern),
             NameCard.last_name.ilike(like_pattern),
-            NameCard.first_name_kana.ilike(like_pattern),
-            NameCard.last_name_kana.ilike(like_pattern),
+            # kana フィールドはひらがな/カタカナ両方で検索
+            NameCard.first_name_kana.ilike(like_hiragana),
+            NameCard.first_name_kana.ilike(like_katakana),
+            NameCard.last_name_kana.ilike(like_hiragana),
+            NameCard.last_name_kana.ilike(like_katakana),
             NameCard.memo.ilike(like_pattern),
             NameCard.met_notes.ilike(like_pattern),
         ]

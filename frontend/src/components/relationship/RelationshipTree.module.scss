@@ -86,6 +86,22 @@
   }
 }
 
+.addChildButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: $radius-sm;
+  color: var(--color-foreground-muted);
+  transition: background-color $transition-fast, color $transition-fast;
+
+  &:hover {
+    background-color: var(--color-surface-hover);
+    color: var(--color-primary);
+  }
+}
+
 .childrenContainer {
   // Children are indented via inline paddingLeft
 }

@@ -7,7 +7,7 @@ import {
   type ContactMethodFormData,
 } from "@/lib/schemas/contact-method";
 import type { NamecardCreateFormData } from "@/lib/schemas/namecard";
-import { CameraCapture } from "./CameraCapture";
+import { CameraCapture, type GuideRect } from "./CameraCapture";
 import styles from "./CameraOCRFlow.module.scss";
 import { type CornerPoint, CornerSelector } from "./CornerSelector";
 
@@ -21,12 +21,17 @@ interface CameraOCRFlowProps {
 export function CameraOCRFlow({ onComplete, onCancel }: CameraOCRFlowProps) {
   const [step, setStep] = useState<FlowStep>("camera");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [guideRect, setGuideRect] = useState<GuideRect | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleCapture = useCallback((imageData: string) => {
-    setCapturedImage(imageData);
-    setStep("corners");
-  }, []);
+  const handleCapture = useCallback(
+    (imageData: string, rect?: GuideRect) => {
+      setCapturedImage(imageData);
+      setGuideRect(rect ?? null);
+      setStep("corners");
+    },
+    [],
+  );
 
   const handleCornersConfirm = useCallback(
     async (corners: CornerPoint[]) => {
@@ -103,6 +108,7 @@ export function CameraOCRFlow({ onComplete, onCancel }: CameraOCRFlowProps) {
         {error && <p className={styles.error}>{error}</p>}
         <CornerSelector
           image={capturedImage}
+          guideRect={guideRect ?? undefined}
           onConfirm={handleCornersConfirm}
           onBack={handleBackToCamera}
         />

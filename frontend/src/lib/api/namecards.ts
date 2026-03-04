@@ -12,7 +12,7 @@ export interface ContactMethod {
 
 export interface RelationshipRef {
   id: string;
-  node_name?: string;
+  name?: string;
   full_path?: string;
   parent_id?: string | null;
 }

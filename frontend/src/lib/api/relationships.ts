@@ -4,7 +4,7 @@ import { apiClient } from "./client";
 
 export interface RelationshipNode {
   id: string;
-  node_name: string;
+  name: string;
   parent_id: string | null;
   children: RelationshipNode[];
 }
@@ -21,7 +21,7 @@ export interface RelationshipUpdateData {
 // ─── API Functions ───────────────────────────────────────
 
 export async function getRelationships(): Promise<RelationshipNode[]> {
-  const response = await apiClient.get<RelationshipNode[]>("/relationships");
+  const response = await apiClient.get<RelationshipNode[]>("/relationships/tree");
   return response.data;
 }
 

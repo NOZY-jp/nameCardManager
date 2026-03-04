@@ -5,7 +5,8 @@
   flex-direction: column;
   gap: $space-6;
   max-width: 48rem;
-  margin: 0 auto;
+  margin: $space-8 auto;
+  padding: 0 $space-4;
 }
 
 .header {
@@ -164,16 +165,38 @@
 
 .relationshipList {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: $space-2;
 }
 
-.relationship {
+.relationshipPath {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $space-1;
+}
+
+.relationshipSegment {
   display: inline-flex;
   align-items: center;
   gap: $space-1;
+}
+
+.relationshipSeparator {
+  color: var(--color-foreground-muted);
+  font-size: $text-sm;
+  opacity: 0.5;
+}
+
+.relationshipAncestor {
   font-size: $text-sm;
   color: var(--color-foreground-muted);
+}
+
+.relationshipLeaf {
+  font-size: $text-sm;
+  color: var(--color-foreground);
+  font-weight: $weight-semibold;
   background-color: var(--color-surface-hover);
   padding: $space-1 $space-3;
   border-radius: $radius-full;

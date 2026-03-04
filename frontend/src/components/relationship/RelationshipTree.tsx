@@ -8,7 +8,7 @@ import styles from "./RelationshipTree.module.scss";
 
 export interface RelationshipTreeNode {
   id: string;
-  node_name: string;
+  name: string;
   parent_id: string | null;
   children: RelationshipTreeNode[];
 }
@@ -25,16 +25,20 @@ interface RelationshipTreeProps {
 interface TreeNodeProps {
   node: RelationshipTreeNode;
   depth: number;
+  onAdd?: (data: { name: string; parent_id: string }) => void;
   onDelete?: (id: string) => void;
   onUpdate?: (data: { id: string; name: string }) => void;
 }
 
-function TreeNode({ node, depth, onDelete, onUpdate }: TreeNodeProps) {
+function TreeNode({ node, depth, onAdd, onDelete, onUpdate }: TreeNodeProps) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState(node.node_name);
+  const [editValue, setEditValue] = useState(node.name);
+  const [addingChild, setAddingChild] = useState(false);
+  const [childName, setChildName] = useState("");
   const editInputRef = useRef<HTMLInputElement>(null);
-  const hasChildren = node.children.length > 0;
+  const childInputRef = useRef<HTMLInputElement>(null);
+  const hasChildren = (node.children?.length ?? 0) > 0;
   const isLeaf = !hasChildren;
 
   useEffect(() => {
@@ -43,33 +47,47 @@ function TreeNode({ node, depth, onDelete, onUpdate }: TreeNodeProps) {
     }
   }, [editing]);
 
+  useEffect(() => {
+    if (addingChild && childInputRef.current) {
+      childInputRef.current.focus();
+    }
+  }, [addingChild]);
+
   const handleToggle = () => {
     setExpanded((prev) => !prev);
   };
 
   const handleDoubleClick = () => {
     setEditing(true);
-    setEditValue(node.node_name);
+    setEditValue(node.name);
   };
 
   const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      if (editValue.trim() && editValue !== node.node_name) {
+      if (editValue.trim() && editValue !== node.name) {
         onUpdate?.({ id: node.id, name: editValue.trim() });
       }
       setEditing(false);
     }
     if (e.key === "Escape") {
       setEditing(false);
-      setEditValue(node.node_name);
+      setEditValue(node.name);
     }
   };
 
   const handleEditBlur = () => {
-    if (editValue.trim() && editValue !== node.node_name) {
+    if (editValue.trim() && editValue !== node.name) {
       onUpdate?.({ id: node.id, name: editValue.trim() });
     }
     setEditing(false);
+  };
+
+  const handleAddChild = () => {
+    if (!childName.trim()) return;
+    onAdd?.({ name: childName.trim(), parent_id: String(node.id) });
+    setChildName("");
+    setAddingChild(false);
+    setExpanded(true);
   };
 
   return (
@@ -82,7 +100,7 @@ function TreeNode({ node, depth, onDelete, onUpdate }: TreeNodeProps) {
           type="button"
           className={styles.nodeToggle}
           onClick={handleToggle}
-          aria-label={node.node_name}
+          aria-label={node.name}
           aria-expanded={expanded}
         >
           <ChevronRight
@@ -102,12 +120,22 @@ function TreeNode({ node, depth, onDelete, onUpdate }: TreeNodeProps) {
           ) : (
             // biome-ignore lint/a11y/noStaticElementInteractions: dblClick for inline edit UX
             <span className={styles.nodeName} onDoubleClick={handleDoubleClick}>
-              {node.node_name}
+              {node.name}
             </span>
           )}
         </button>
 
         <div className={styles.nodeActions}>
+          {onAdd && (
+            <button
+              type="button"
+              className={styles.addChildButton}
+              onClick={() => setAddingChild(true)}
+              aria-label="子を追加"
+            >
+              <Plus size={14} />
+            </button>
+          )}
           {isLeaf && onDelete && (
             <button
               type="button"
@@ -121,6 +149,46 @@ function TreeNode({ node, depth, onDelete, onUpdate }: TreeNodeProps) {
         </div>
       </div>
 
+      {addingChild && (
+        <div
+          className={styles.addForm}
+          style={{ paddingLeft: `${(depth + 1) * 1.25}rem` }}
+        >
+          <input
+            ref={childInputRef}
+            className={styles.addInput}
+            value={childName}
+            onChange={(e) => setChildName(e.target.value)}
+            placeholder="子ノード名"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAddChild();
+              if (e.key === "Escape") {
+                setAddingChild(false);
+                setChildName("");
+              }
+            }}
+          />
+          <button
+            type="button"
+            className={styles.confirmButton}
+            onClick={handleAddChild}
+            aria-label="追加"
+          >
+            追加
+          </button>
+          <button
+            type="button"
+            className={styles.cancelButton}
+            onClick={() => {
+              setAddingChild(false);
+              setChildName("");
+            }}
+          >
+            キャンセル
+          </button>
+        </div>
+      )}
+
       {expanded && hasChildren && (
         <div className={styles.childrenContainer}>
           {node.children.map((child) => (
@@ -128,6 +196,7 @@ function TreeNode({ node, depth, onDelete, onUpdate }: TreeNodeProps) {
               key={child.id}
               node={child}
               depth={depth + 1}
+              onAdd={onAdd}
               onDelete={onDelete}
               onUpdate={onUpdate}
             />
@@ -225,6 +294,7 @@ export function RelationshipTree({
             key={node.id}
             node={node}
             depth={0}
+            onAdd={onAdd}
             onDelete={onDelete}
             onUpdate={onUpdate}
           />

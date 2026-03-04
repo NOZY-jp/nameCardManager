@@ -7,7 +7,7 @@ import styles from "./RelationshipSelect.module.scss";
 
 interface RelationshipNode {
   id: string;
-  node_name: string;
+  name: string;
   parent_id?: string | null;
   full_path?: string;
   children?: RelationshipNode[];
@@ -33,7 +33,7 @@ function buildFullPath(
 
   function findPath(nodes: RelationshipNode[], target: string): boolean {
     for (const n of nodes) {
-      path.push(n.node_name);
+      path.push(n.name);
       if (n.id === target) return true;
       if (n.children?.length && findPath(n.children, target)) return true;
       path.pop();
@@ -87,7 +87,7 @@ function TreeNode({
           <button
             type="button"
             className={styles.expandButton}
-            aria-label={node.node_name}
+            aria-label={node.name}
             onClick={() => onToggleExpand(node.id)}
           >
             <svg
@@ -117,7 +117,7 @@ function TreeNode({
           }}
           tabIndex={0}
         >
-          {node.node_name}
+          {node.name}
         </span>
       </div>
       {hasChildren && isExpanded && (

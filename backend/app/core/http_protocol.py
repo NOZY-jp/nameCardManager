@@ -56,6 +56,19 @@ def _encode_non_ascii_in_request_line(data: bytes) -> bytes:
 class HttpToolsProtocolWithUTF8(HttpToolsProtocol):
     """非 ASCII URL を自動エンコードする HttpToolsProtocol サブクラス。"""
 
+    _request_line_processed: bool = False
+
+    def connection_made(self, transport: object) -> None:
+        self._request_line_processed = False
+        super().connection_made(transport)  # type: ignore[arg-type]
+
     def data_received(self, data: bytes) -> None:
-        """受信データ内の非 ASCII バイトをエンコードしてから親に渡す。"""
-        super().data_received(_encode_non_ascii_in_request_line(data))
+        """受信データ内の非 ASCII バイトをエンコードしてから親に渡す。
+
+        リクエストラインは最初のデータチャンクにのみ含まれるため、
+        最初のチャンクだけを変換し、以降（ボディデータ）はそのまま渡す。
+        """
+        if not self._request_line_processed:
+            self._request_line_processed = True
+            data = _encode_non_ascii_in_request_line(data)
+        super().data_received(data)

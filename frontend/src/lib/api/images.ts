@@ -38,7 +38,7 @@ export const imageApi = {
     const response = await apiClient.post<UploadImageResponse>(
       "/images/upload",
       formData,
-      { headers: { "Content-Type": "multipart/form-data" } },
+      { headers: { "Content-Type": undefined } },
     );
     return response.data;
   },
