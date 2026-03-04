@@ -83,6 +83,21 @@
   flex-shrink: 0;
 }
 
+.headerSearch {
+  display: none;
+  flex: 0 1 20rem;
+  margin-right: $space-2;
+
+  @media (min-width: $bp-lg) {
+    display: block;
+  }
+}
+
+.mobileSearch {
+  padding: $space-3 $space-4;
+  border-bottom: 1px solid var(--color-border);
+}
+
 .addButton {
   display: inline-flex;
   align-items: center;

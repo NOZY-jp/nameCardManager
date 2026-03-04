@@ -14,10 +14,11 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SearchBar } from "@/components/search/SearchBar";
 import { useAuth } from "@/hooks/useAuth";
 import styles from "./header.module.scss";
 
@@ -47,8 +48,20 @@ export function Header() {
   const { resolvedTheme, setTheme } = useTheme();
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const handleSearch = useCallback(
+    (query: string) => {
+      if (query.trim()) {
+        router.push(`/namecards?search=${encodeURIComponent(query.trim())}`);
+      } else {
+        router.push("/namecards");
+      }
+    },
+    [router],
+  );
 
   useEffect(() => setMounted(true), []);
 
@@ -116,6 +129,10 @@ export function Header() {
           )}
         </nav>
 
+        <div className={styles.headerSearch}>
+          <SearchBar onSearch={handleSearch} placeholder="名刺を検索..." />
+        </div>
+
         <div className={styles.actions}>
           <Link
             href="/namecards/new"
@@ -181,6 +198,9 @@ export function Header() {
         data-open={mobileOpen ? "true" : undefined}
         aria-hidden={!mobileOpen}
       >
+        <div className={styles.mobileSearch}>
+          <SearchBar onSearch={(q) => { handleSearch(q); closeMobile(); }} placeholder="名刺を検索..." />
+        </div>
         <ul className={styles.mobileList}>
           {NAV_ITEMS.map((item) => (
             <li key={item.href}>

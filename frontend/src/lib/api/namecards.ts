@@ -73,9 +73,14 @@ export interface PaginatedResponse<T> {
 export interface GetNameCardsParams {
   page?: number;
   per_page?: number;
-  sort_by?: "created_at" | "updated_at" | "first_name" | "last_name";
+  sort_by?:
+    | "created_at"
+    | "updated_at"
+    | "first_name"
+    | "last_name"
+    | "first_name_kana"
+    | "last_name_kana";
   sort_order?: "asc" | "desc";
-  search?: string;
 }
 
 // ─── API Functions ───────────────────────────────────────
@@ -121,7 +126,6 @@ interface ListParams {
   perPage?: number;
   sort_by?: GetNameCardsParams["sort_by"];
   sort_order?: GetNameCardsParams["sort_order"];
-  search?: string;
 }
 
 export const namecardApi = {
