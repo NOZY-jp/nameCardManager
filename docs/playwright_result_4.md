@@ -1297,3 +1297,130 @@ export default function Home() {
 | `frontend/src/app/(main)/namecards/namecards.module.scss` | 大幅変更 | ソートUI用スタイル追加 |
 | `frontend/src/lib/api/namecards.ts` | 変更 | `sort_order` → `order` マッピング修正 |
 | `frontend/src/app/(main)/layout.tsx` | 変更 | Header を Suspense でラップ |
+
+---
+---
+
+# 問題2 修正結果: レスポンシブUI三段階化とモバイルUI修正
+
+## 修正情報
+- 日時: 2026-03-04
+- 実施者: Sisyphus-Junior Agent
+- 対象: ヘッダーの三段階レスポンシブ化、ハンバーガーボタン右端配置、ダークモード切替のモバイルメニュー内移動、モバイルナビ右揃え
+- 方法: コード実装 + Playwright UI検証（4ビューポート幅）
+
+---
+
+## 1. 修正結果サマリー
+
+| 項目 | 修正前 | 修正後 |
+|------|--------|--------|
+| ブレークポイント構成 | 2段階（≥1024px / <1024px） | 3段階（≥1280px / 768-1279px / <768px） |
+| デスクトップ（≥1280px） | フルナビ表示 | フルナビ表示（アイコン＋テキストラベル）、検索バー20rem |
+| タブレット（768-1279px） | なし（デスクトップと同一） | 中間状態：アイコンのみナビ（ラベル非表示）、検索バー14rem |
+| モバイル（<768px） | <1024pxでハンバーガーメニュー | <768pxでハンバーガーメニュー |
+| ハンバーガーボタン位置 | ヘッダー内 | ✅ 右端に配置 |
+| ダークモード切替（デスクトップ/タブレット） | ヘッダー内表示 | ✅ ヘッダー内表示（タブレット以上） |
+| ダークモード切替（モバイル） | ヘッダー内表示 | ✅ ハンバーガーメニュー内に移動（「ライトモード」/「ダークモード」テキスト付き） |
+| モバイルナビ方向 | 左から | ✅ 右から（right: 0でスライドイン） |
+
+---
+
+## 2. 修正内容
+
+### 2.1 ヘッダーSCSS三段階ブレークポイント化
+
+**ファイル**: `frontend/src/components/layout/header.module.scss`
+
+- ブレークポイント境界を `$bp-lg`（1024px） → `$bp-md`（768px）/ `$bp-xl`（1280px）に変更
+- `.desktopNav`: `≥$bp-md` で表示
+- `.navLinkLabel`: デフォルト `display: none`、`≥$bp-xl` で `display: inline`（タブレットではラベル非表示）
+- `.navLinkIcon`: アイコン表示用クラス追加
+- ナビリンク: タブレット時コンパクトpadding（`@media (min-width: $bp-md) and (max-width: #{$bp-xl - 1px})`）
+- `.hamburger`: `≥$bp-md` で非表示
+- `.themeToggleDesktop`: `<$bp-md` で非表示、`≥$bp-md` で表示
+- `.mobileThemeToggle`: モバイルメニュー内テーマ切替ボタンスタイル
+- `.searchWrapper`: `≥$bp-md` で表示、max-width 14rem → `≥$bp-xl` で 20rem
+- `.mobileNav`: `right: 0` で右からスライドイン、`≥$bp-md` で非表示
+
+### 2.2 ヘッダーTSX修正
+
+**ファイル**: `frontend/src/components/layout/Header.tsx`
+
+- デスクトップナビリンクにアイコン（`<span className={styles.navLinkIcon}>`）とラベル（`<span className={styles.navLinkLabel}>`）のspan要素を追加
+- ヘッダー内テーマ切替ボタンに `themeToggleDesktop` クラスを追加（モバイルで非表示）
+- モバイルメニュー（`mobileList`）内に `<li>` でテーマ切替ボタンを追加（`mobileThemeToggle` クラス）
+  - 「ライトモード」/「ダークモード」テキスト表示
+
+---
+
+## 3. Playwright UI検証結果
+
+### 検証環境
+- Docker コンテナ: frontend (:3000), backend (:8000), db (:5432 healthy) — すべて稼働中
+- テストユーザー: `test@example.com` / `testpassword123`
+- 検証ビューポート: 1280px, 1024px, 768px, 480px
+
+### 検証結果
+
+| # | ビューポート | 検証項目 | 結果 | 詳細 |
+|---|-------------|----------|------|------|
+| 1 | 1280px（デスクトップ） | フルナビ（アイコン＋ラベル） | ✅ 合格 | ナビリンクにアイコンとテキストラベルが表示 |
+| 2 | 1280px | ハンバーガー非表示 | ✅ 合格 | `hamburger: display: none` |
+| 3 | 1280px | テーマ切替ヘッダー内表示 | ✅ 合格 | `themeToggleDesktop: display: flex` |
+| 4 | 1280px | 検索バー20rem | ✅ 合格 | `searchWrapper: display: block`, `max-width: 20rem` |
+| 5 | 1024px（タブレット） | アイコンのみナビ（ラベル非表示） | ✅ 合格 | `navLinkLabel: display: none`, `navLinkIcon: display: flex` |
+| 6 | 1024px | ハンバーガー非表示 | ✅ 合格 | `hamburger: display: none` |
+| 7 | 1024px | テーマ切替ヘッダー内表示 | ✅ 合格 | `themeToggleDesktop: display: flex` |
+| 8 | 1024px | 検索バー14rem | ✅ 合格 | `searchWrapper: display: block`, `max-width: 14rem` |
+| 9 | 768px（タブレット下限） | アイコンのみナビ | ✅ 合格 | `navLinkLabel: display: none`, `navLinkIcon: display: flex` |
+| 10 | 768px | ハンバーガー非表示 | ✅ 合格 | `hamburger: display: none` |
+| 11 | 768px | テーマ切替ヘッダー内表示 | ✅ 合格 | `themeToggleDesktop: display: flex` |
+| 12 | 768px | 検索バー表示 | ✅ 合格 | `searchWrapper: display: block` |
+| 13 | 480px（モバイル） | デスクトップナビ非表示 | ✅ 合格 | `desktopNav: display: none` |
+| 14 | 480px | ハンバーガー表示・右端 | ✅ 合格 | `hamburger: display: flex`、ヘッダー右端に配置 |
+| 15 | 480px | テーマ切替ヘッダー内非表示 | ✅ 合格 | `themeToggleDesktop: display: none` |
+| 16 | 480px | 検索バー非表示 | ✅ 合格 | `searchWrapper: display: none` |
+| 17 | 480px（メニュー開） | モバイルナビ右からスライドイン | ✅ 合格 | `mobileNav: transform: translateX(0)`, `right: 0` |
+| 18 | 480px（メニュー開） | テーマ切替メニュー内表示 | ✅ 合格 | `mobileThemeToggle: display: flex, visibility: visible`、「ライトモード」テキスト表示 |
+| 19 | 480px（メニュー開） | ナビ項目表示 | ✅ 合格 | 組織管理、タグ管理、エクスポート/インポート、ヘルプ、ログアウト |
+| 20 | 480px（メニュー開） | オーバーレイ表示 | ✅ 合格 | 半透明オーバーレイが背景を覆う |
+
+### CSS検証詳細（`getComputedStyle`による確認）
+
+**1280px（デスクトップ）:**
+- `desktopNav: flex` / `hamburger: none` / `themeToggleDesktop: flex` / `searchWrapper: block`
+
+**1024px（タブレット）:**
+- `desktopNav: flex` / `hamburger: none` / `themeToggleDesktop: flex` / `searchWrapper: block`
+- `navLinkLabel: none` / `navLinkIcon: flex`
+
+**768px（タブレット下限）:**
+- `desktopNav: flex` / `hamburger: none` / `themeToggleDesktop: flex` / `searchWrapper: block`
+
+**480px（モバイル・閉じた状態）:**
+- `desktopNav: none` / `hamburger: flex` / `themeToggleDesktop: none` / `searchWrapper: none`
+- `mobileNav: flex, transform: translateX(280px)`（画面外）
+
+**480px（モバイル・メニュー開）:**
+- `mobileNav: flex, transform: translateX(0)`（画面内）
+- `mobileThemeToggle: flex, visibility: visible`
+
+### スクリーンショット
+
+| ファイル | 説明 |
+|----------|------|
+| `docs/screenshots/responsive_1280px.png` | デスクトップ表示（1280px）— フルナビ（アイコン＋テキスト）、検索バー20rem |
+| `docs/screenshots/responsive_1024px.png` | タブレット表示（1024px）— アイコンのみナビ、検索バー14rem |
+| `docs/screenshots/responsive_768px.png` | タブレット下限（768px）— アイコンのみナビ、検索バー表示 |
+| `docs/screenshots/responsive_480px.png` | モバイル表示（480px）— ハンバーガー右端、デスクトップナビ非表示 |
+| `docs/screenshots/responsive_480px_menu.png` | モバイルメニュー開（480px）— 右スライドイン、テーマ切替メニュー内 |
+
+---
+
+## 4. 修正ファイル一覧
+
+| ファイル | 変更種別 | 概要 |
+|----------|----------|------|
+| `frontend/src/components/layout/header.module.scss` | 大幅変更 | 三段階ブレークポイント化、ハンバーガー右端、モバイルナビ右揃え、テーマ切替のレスポンシブ対応 |
+| `frontend/src/components/layout/Header.tsx` | 変更 | ナビリンクにアイコン/ラベルspan追加、テーマ切替のデスクトップ/モバイル分離 |
