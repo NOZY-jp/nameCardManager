@@ -73,14 +73,9 @@ export interface PaginatedResponse<T> {
 export interface GetNameCardsParams {
   page?: number;
   per_page?: number;
-  sort_by?:
-    | "created_at"
-    | "updated_at"
-    | "first_name"
-    | "last_name"
-    | "first_name_kana"
-    | "last_name_kana";
+  sort_by?: "created_at" | "updated_at" | "first_name" | "last_name";
   sort_order?: "asc" | "desc";
+  search?: string;
 }
 
 // ─── API Functions ───────────────────────────────────────
@@ -88,9 +83,14 @@ export interface GetNameCardsParams {
 export async function getNameCards(
   params: GetNameCardsParams = {},
 ): Promise<PaginatedResponse<NameCard>> {
+  const { sort_order, ...rest } = params;
+  const apiParams: Record<string, unknown> = { ...rest };
+  if (sort_order) {
+    apiParams.order = sort_order;
+  }
   const response = await apiClient.get<PaginatedResponse<NameCard>>(
     "/namecards",
-    { params },
+    { params: apiParams },
   );
   return response.data;
 }
@@ -126,6 +126,7 @@ interface ListParams {
   perPage?: number;
   sort_by?: GetNameCardsParams["sort_by"];
   sort_order?: GetNameCardsParams["sort_order"];
+  search?: string;
 }
 
 export const namecardApi = {

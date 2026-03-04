@@ -1,53 +1,41 @@
 "use client";
 
+import { ArrowDownAZ, ArrowUpAZ } from "lucide-react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { NameCardList } from "@/components/namecard";
-import {
-  getNameCards,
-  type GetNameCardsParams,
-  type NameCard,
-} from "@/lib/api/namecards";
+import { getNameCards, type NameCard } from "@/lib/api/namecards";
 import { searchNameCards } from "@/lib/api/search";
 import styles from "./namecards.module.scss";
 
-type SortOption = {
-  label: string;
-  sort_by: string;
-  sort_order: "asc" | "desc";
-};
+type SortField = "updated_at" | "last_name" | "created_at";
+type SortOrder = "asc" | "desc";
 
-const SORT_OPTIONS: SortOption[] = [
-  { label: "作成日（新しい順）", sort_by: "created_at", sort_order: "desc" },
-  { label: "作成日（古い順）", sort_by: "created_at", sort_order: "asc" },
-  { label: "更新日（新しい順）", sort_by: "updated_at", sort_order: "desc" },
-  { label: "更新日（古い順）", sort_by: "updated_at", sort_order: "asc" },
-  { label: "名前（昇順）", sort_by: "last_name", sort_order: "asc" },
-  { label: "名前（降順）", sort_by: "last_name", sort_order: "desc" },
-  { label: "かな（昇順）", sort_by: "last_name_kana", sort_order: "asc" },
-  { label: "かな（降順）", sort_by: "last_name_kana", sort_order: "desc" },
+const SORT_OPTIONS: { value: SortField; label: string }[] = [
+  { value: "updated_at", label: "最終更新日" },
+  { value: "last_name", label: "名前" },
+  { value: "created_at", label: "作成日" },
 ];
 
 function NameCardsContent() {
   const searchParams = useSearchParams();
-  const searchQuery = searchParams.get("search") || "";
+  const searchQuery = searchParams.get("search") ?? "";
 
   const [items, setItems] = useState<NameCard[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [sortIndex, setSortIndex] = useState(0);
-  const prevSearchRef = useRef(searchQuery);
+  const [sortBy, setSortBy] = useState<SortField>("updated_at");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const perPage = 20;
 
   const fetchCards = useCallback(
-    async (p: number, si: number, query: string) => {
+    async (p: number) => {
       setLoading(true);
       try {
-        const { sort_by, sort_order } = SORT_OPTIONS[si];
-        if (query.trim()) {
+        if (searchQuery.trim()) {
           const res = await searchNameCards({
-            q: query.trim(),
+            q: searchQuery.trim(),
             page: p,
             per_page: perPage,
           });
@@ -57,8 +45,8 @@ function NameCardsContent() {
           const res = await getNameCards({
             page: p,
             per_page: perPage,
-            sort_by: sort_by as GetNameCardsParams["sort_by"],
-            sort_order,
+            sort_by: sortBy,
+            sort_order: sortOrder,
           });
           setItems(res.items);
           setTotal(res.total);
@@ -67,51 +55,59 @@ function NameCardsContent() {
         setLoading(false);
       }
     },
-    [],
+    [searchQuery, sortBy, sortOrder],
   );
 
   useEffect(() => {
-    if (prevSearchRef.current !== searchQuery) {
-      prevSearchRef.current = searchQuery;
-      setPage(1);
-      return;
-    }
-    fetchCards(page, sortIndex, searchQuery);
-  }, [page, sortIndex, searchQuery, fetchCards]);
-
-  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const idx = Number(e.target.value);
-    setSortIndex(idx);
     setPage(1);
+  }, [searchQuery, sortBy, sortOrder]);
+
+  useEffect(() => {
+    fetchCards(page);
+  }, [page, fetchCards]);
+
+  const toggleSortOrder = () => {
+    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
   };
 
   return (
     <div className={styles.page}>
-      <div className={styles.toolbar}>
-        {searchQuery && (
-          <p className={styles.searchInfo}>
-            「{searchQuery}」の検索結果（{total}件）
-          </p>
-        )}
-        <div className={styles.sortControl}>
-          <label htmlFor="sort-select" className={styles.sortLabel}>
-            並び替え
-          </label>
+      <div className={styles.toolbar} data-testid="sort-toolbar">
+        <div className={styles.sortGroup}>
+          <span className={styles.sortLabel}>並び替え:</span>
           <select
-            id="sort-select"
             className={styles.sortSelect}
-            value={sortIndex}
-            onChange={handleSortChange}
-            aria-label="並び替え"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortField)}
+            aria-label="ソート項目"
           >
-            {SORT_OPTIONS.map((opt, i) => (
-              <option key={`${opt.sort_by}-${opt.sort_order}`} value={i}>
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            className={styles.sortOrderButton}
+            onClick={toggleSortOrder}
+            aria-label={sortOrder === "asc" ? "昇順" : "降順"}
+            title={sortOrder === "asc" ? "昇順" : "降順"}
+          >
+            {sortOrder === "asc" ? (
+              <ArrowUpAZ size={18} />
+            ) : (
+              <ArrowDownAZ size={18} />
+            )}
+          </button>
         </div>
+        {searchQuery && (
+          <span className={styles.searchInfo}>
+            「{searchQuery}」の検索結果: {total}件
+          </span>
+        )}
       </div>
+
       <NameCardList
         items={items}
         total={total}

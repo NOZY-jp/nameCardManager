@@ -14,11 +14,11 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/search/SearchBar";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import styles from "./header.module.scss";
 
@@ -49,8 +49,11 @@ export function Header() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const handleSearch = useCallback(
     (query: string) => {
@@ -62,8 +65,6 @@ export function Header() {
     },
     [router],
   );
-
-  useEffect(() => setMounted(true), []);
 
   const toggleTheme = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
@@ -113,8 +114,8 @@ export function Header() {
                 href={item.href}
                 className={styles.primaryLink}
               >
-                {item.icon}
-                {item.label}
+                <span className={styles.navLinkIcon}>{item.icon}</span>
+                <span className={styles.navLinkLabel}>{item.label}</span>
               </Link>
             ) : (
               <Link
@@ -123,14 +124,19 @@ export function Header() {
                 className={styles.navLink}
                 data-active={isActive(item.href) ? "true" : undefined}
               >
-                {item.label}
+                <span className={styles.navLinkIcon}>{item.icon}</span>
+                <span className={styles.navLinkLabel}>{item.label}</span>
               </Link>
             ),
           )}
         </nav>
 
-        <div className={styles.headerSearch}>
-          <SearchBar onSearch={handleSearch} placeholder="名刺を検索..." />
+        <div className={styles.searchWrapper}>
+          <SearchBar
+            onSearch={handleSearch}
+            placeholder="名刺を検索..."
+            initialValue={searchParams.get("search") ?? ""}
+          />
         </div>
 
         <div className={styles.actions}>
@@ -145,7 +151,7 @@ export function Header() {
           {mounted ? (
             <button
               type="button"
-              className={styles.themeToggle}
+              className={`${styles.themeToggle} ${styles.themeToggleDesktop}`}
               onClick={toggleTheme}
               aria-label="テーマ切替"
             >
@@ -154,7 +160,7 @@ export function Header() {
           ) : (
             <button
               type="button"
-              className={styles.themeToggle}
+              className={`${styles.themeToggle} ${styles.themeToggleDesktop}`}
               aria-label="テーマ切替"
             >
               <span className={styles.themeTogglePlaceholder} />
@@ -198,8 +204,15 @@ export function Header() {
         data-open={mobileOpen ? "true" : undefined}
         aria-hidden={!mobileOpen}
       >
-        <div className={styles.mobileSearch}>
-          <SearchBar onSearch={(q) => { handleSearch(q); closeMobile(); }} placeholder="名刺を検索..." />
+        <div className={styles.mobileSearchWrapper}>
+          <SearchBar
+            onSearch={(query) => {
+              handleSearch(query);
+              closeMobile();
+            }}
+            placeholder="名刺を検索..."
+            initialValue={searchParams.get("search") ?? ""}
+          />
         </div>
         <ul className={styles.mobileList}>
           {NAV_ITEMS.map((item) => (
@@ -217,6 +230,31 @@ export function Header() {
               </Link>
             </li>
           ))}
+          <li>
+            {mounted ? (
+              <button
+                type="button"
+                className={styles.mobileThemeToggle}
+                onClick={toggleTheme}
+              >
+                {resolvedTheme === "dark" ? (
+                  <Sun size={16} />
+                ) : (
+                  <Moon size={16} />
+                )}
+                {resolvedTheme === "dark" ? "ライトモード" : "ダークモード"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={styles.mobileThemeToggle}
+                disabled
+              >
+                <span className={styles.themeTogglePlaceholder} />
+                テーマ切替
+              </button>
+            )}
+          </li>
         </ul>
 
         {user && (

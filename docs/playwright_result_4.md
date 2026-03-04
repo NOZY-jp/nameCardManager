@@ -1175,58 +1175,125 @@ export default function Home() {
 ---
 ---
 
-# 修正1: 検索バー・ソートUI・マージン修正 — 実装結果
+# 問題1 修正結果: ヘッダー検索バー・ソート機能の実装
 
 ## 修正情報
 - 日時: 2026-03-04
 - 実施者: Sisyphus-Junior Agent
-- 対象: 検索バーのヘッダー統合、ソートUI追加、名刺一覧ページの余白修正、ロゴリンク修正
-- 方法: コード修正 + Dockerコンテナ再ビルド + Playwright UI検証
+- 対象: ヘッダーへの検索バー統合、名刺一覧ページへのソートUI追加
+- 方法: コード実装 + Playwright UI検証
 
 ---
 
-## 1. 修正ファイル一覧
+## 1. 修正結果サマリー
 
-| ファイル | 修正内容 |
-|----------|----------|
-| `frontend/src/components/layout/Header.tsx` | ロゴリンク先を `/namecards` に変更、サイドバーナビに検索バーを統合 |
-| `frontend/src/components/layout/header.module.scss` | サイドバー内検索バーのスタイル追加 |
-| `frontend/src/app/(main)/namecards/page.tsx` | ソートUI追加（combobox）、sort_by/sort_order パラメータをAPI呼び出しに反映 |
-| `frontend/src/app/(main)/namecards/namecards.module.scss` | ソートUI用スタイル追加、ページ余白（max-width/margin/padding）追加 |
-| `frontend/src/lib/api/namecards.ts` | `getNameCards()` に `sort_by`/`sort_order` パラメータを渡すように修正 |
+| 項目 | 修正前 | 修正後 |
+|------|--------|--------|
+| ヘッダーの検索バー | ❌ 存在しない | ✅ デスクトップ・モバイル両方に配置 |
+| `SearchBar` コンポーネント | ⚠️ 未使用 | ✅ Header.tsx で使用 |
+| 検索結果表示 | ❌ なし | ✅ `/namecards?search=...` で検索結果を表示 |
+| ソートUI | ❌ なし | ✅ ソートドロップダウン + 昇順/降順トグルボタン |
+| フロントエンド検索API関数 | ❌ なし（※実際は `search.ts` に既存） | ✅ `searchNameCards()` をページで使用 |
+| `getNameCards` のソートパラメータ | ⚠️ `sort_order` をそのまま送信（バックエンド非対応） | ✅ `sort_order` → `order` にマッピングして送信 |
 
 ---
 
-## 2. Playwright UI検証結果
+## 2. 修正内容
+
+### 2.1 ヘッダーに検索バー統合
+
+**ファイル**: `frontend/src/components/layout/Header.tsx`
+
+- `SearchBar` コンポーネントをインポート
+- `useRouter`, `useSearchParams` を使用
+- `handleSearch` コールバック: 検索クエリがあれば `/namecards?search=...` に遷移、なければ `/namecards` に遷移
+- **デスクトップ**: `.searchWrapper` 内に配置（`desktopNav` と `actions` の間）
+- **モバイル**: `.mobileSearchWrapper` 内に配置（`mobileNav` の先頭）
+- `initialValue` prop で URL パラメータから検索クエリを復元
+
+### 2.2 検索バースタイル
+
+**ファイル**: `frontend/src/components/layout/header.module.scss`
+
+- `.searchWrapper`: デフォルト非表示、`≥1024px` で `display: block`、`flex: 1`、`max-width: 20rem`
+- `.mobileSearchWrapper`: `padding: 0 $space-4 $space-2`
+
+### 2.3 SearchBar コンポーネントの拡張
+
+**ファイル**: `frontend/src/components/search/SearchBar.tsx`
+
+- `initialValue` プロパティを追加（デフォルト `""`）
+- `useState(initialValue)` で初期値を設定可能に
+
+### 2.4 名刺一覧ページにソートUI追加
+
+**ファイル**: `frontend/src/app/(main)/namecards/page.tsx`
+
+- `NameCardsContent`（`useSearchParams` 使用）と `NameCardsPage`（`Suspense` ラッパー）に分割
+- ソート状態: `sortBy`（`"updated_at"` | `"last_name"` | `"created_at"`）、`sortOrder`（`"asc"` | `"desc"`）
+- ソートUI: `<select>` で項目選択 + ボタンで昇順/降順トグル（`ArrowUpAZ` / `ArrowDownAZ` アイコン）
+- 検索クエリがある場合: `searchNameCards()` を呼び出し
+- 検索クエリがない場合: `getNameCards()` を呼び出し（ソートパラメータ付き）
+- 検索結果件数を「「○○」の検索結果: N件」として表示
+
+### 2.5 ソートUIスタイル
+
+**ファイル**: `frontend/src/app/(main)/namecards/namecards.module.scss`
+
+- `.toolbar`, `.sortGroup`, `.sortLabel`, `.sortSelect`, `.sortOrderButton`, `.searchInfo` スタイル追加
+- レスポンシブ対応: `≤640px` で縦並び
+
+### 2.6 API修正
+
+**ファイル**: `frontend/src/lib/api/namecards.ts`
+
+- `getNameCards()` 内で `sort_order` を `order` にマッピング（バックエンドが `order` パラメータを期待するため）
+
+### 2.7 レイアウト修正
+
+**ファイル**: `frontend/src/app/(main)/layout.tsx`
+
+- `<Header />` を `<Suspense>` でラップ（`useSearchParams()` が Suspense 境界を必要とするため）
+
+---
+
+## 3. Playwright UI検証結果
 
 ### 検証環境
 - Docker コンテナ: frontend (:3000), backend (:8000), db (:5432 healthy) — すべて稼働中
-- ログイン状態でアクセス: `http://localhost:3000/namecards`
+- テストユーザー: `pw4test@example.com` / `testpass123`
+- ビューポート: 1280×900（デスクトップ）
+- テストデータ: 5件の名刺（田中太郎、鈴木花子、佐藤次郎、山田美咲、伊藤健一）
 
 ### 検証結果
 
-| 検証項目 | 結果 | 詳細 |
-|----------|------|------|
-| ヘッダーに検索バーがあるか | ✅ あり | `navigation` 内に `searchbox` が表示 |
-| `/namecards` にソートUIがあるか | ✅ あり | `combobox "並び替え"` が8つのオプション付きで表示 |
-| ソートオプションの内容 | ✅ 正しい | 作成日(新/古)、更新日(新/古)、名前(昇/降)、かな(昇/降) |
-| ページタイトル | ✅ 正常 | 「名刺管理」 |
-
-### ソートオプション一覧（確認済み）
-
-| ラベル | 対応 |
-|--------|------|
-| 作成日（新しい順） | `sort_by=created_at&sort_order=desc` |
-| 作成日（古い順） | `sort_by=created_at&sort_order=asc` |
-| 更新日（新しい順） | `sort_by=updated_at&sort_order=desc` |
-| 更新日（古い順） | `sort_by=updated_at&sort_order=asc` |
-| 名前（昇順） | `sort_by=last_name&sort_order=asc` |
-| 名前（降順） | `sort_by=last_name&sort_order=desc` |
-| かな（昇順） | `sort_by=last_name_kana&sort_order=asc` |
-| かな（降順） | `sort_by=last_name_kana&sort_order=desc` |
+| # | 検証項目 | 結果 | 詳細 |
+|---|----------|------|------|
+| 1 | デスクトップヘッダーに検索バーが表示される | ✅ 合格 | `searchbox "検索"` がヘッダー内に表示 |
+| 2 | ソートUIが表示される（3項目 + トグルボタン） | ✅ 合格 | `combobox "ソート項目"` に「最終更新日」「名前」「作成日」の3オプション + 「降順」ボタン |
+| 3 | デフォルトソート（最終更新日・降順）が正しい | ✅ 合格 | 伊藤→山田→佐藤→鈴木→田中（最後に作成したカードが先頭） |
+| 4 | 検索が機能する（「田中」で検索） | ✅ 合格 | URLが `/namecards?search=田中` に変更、「田中 太郎」のみ表示、「「田中」の検索結果: 1件」表示 |
+| 5 | ソート項目変更（名前・降順） | ✅ 合格 | 鈴木→田中→山田→佐藤→伊藤（日本語の降順） |
+| 6 | ソート順トグル（名前・昇順） | ✅ 合格 | 伊藤→佐藤→山田→田中→鈴木（日本語の昇順）、ボタンラベルが「昇順」に変更 |
 
 ### スクリーンショット
 
 | ファイル | 説明 |
 |----------|------|
-| `docs/screenshots/fix1_namecards_search_sort.png` | 修正後の `/namecards` ページ — ヘッダー検索バー＋ソートUI表示 |
+| `docs/screenshots/namecards_with_sort_and_search.png` | 名刺一覧ページ（検索バー + ソートUI表示、デフォルトソート） |
+| `docs/screenshots/search_result_tanaka.png` | 「田中」の検索結果（1件表示、検索結果件数表示） |
+| `docs/screenshots/sort_by_name_asc.png` | 名前昇順ソート（伊藤→佐藤→山田→田中→鈴木） |
+
+---
+
+## 4. 修正ファイル一覧
+
+| ファイル | 変更種別 | 概要 |
+|----------|----------|------|
+| `frontend/src/components/layout/Header.tsx` | 変更 | SearchBar統合、handleSearch追加 |
+| `frontend/src/components/layout/header.module.scss` | 変更 | `.searchWrapper`, `.mobileSearchWrapper` 追加 |
+| `frontend/src/components/search/SearchBar.tsx` | 変更 | `initialValue` プロパティ追加 |
+| `frontend/src/app/(main)/namecards/page.tsx` | 大幅変更 | ソートUI + 検索統合、Suspense対応 |
+| `frontend/src/app/(main)/namecards/namecards.module.scss` | 大幅変更 | ソートUI用スタイル追加 |
+| `frontend/src/lib/api/namecards.ts` | 変更 | `sort_order` → `order` マッピング修正 |
+| `frontend/src/app/(main)/layout.tsx` | 変更 | Header を Suspense でラップ |

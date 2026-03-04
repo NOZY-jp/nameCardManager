@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
 
 export default function MainLayout({
@@ -7,7 +8,9 @@ export default function MainLayout({
 }) {
   return (
     <>
-      <Header />
+      <Suspense>
+        <Header />
+      </Suspense>
       <main>{children}</main>
     </>
   );

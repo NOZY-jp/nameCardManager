@@ -1,14 +1,24 @@
+// ─── Three-stage Responsive Header ────────────────────
+// Desktop (≥1280px / $bp-xl): Full nav with labels
+// Tablet  (≥768px / $bp-md to <1280px): Compact nav (icons only)
+// Mobile  (<768px): Hamburger menu
+
 .header {
   position: sticky;
   top: 0;
   z-index: $z-sticky;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: $space-2;
   height: 4rem;
-  padding: 0 $space-6;
+  padding: 0 $space-4;
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-surface);
+
+  @media (min-width: $bp-md) {
+    padding: 0 $space-6;
+  }
 }
 
 .brand {
@@ -22,14 +32,25 @@
   flex-shrink: 0;
 }
 
+// ─── Desktop Nav ──────────────────────────────────────
+// Hidden on mobile (<768px), visible on tablet+ (≥768px)
 .desktopNav {
   display: none;
   align-items: center;
   gap: $space-1;
   margin-left: auto;
 
-  @media (min-width: $bp-lg) {
+  @media (min-width: $bp-md) {
     display: flex;
+  }
+}
+
+// Nav link label text — hidden on tablet, shown on desktop
+.navLinkLabel {
+  display: none;
+
+  @media (min-width: $bp-xl) {
+    display: inline;
   }
 }
 
@@ -46,6 +67,11 @@
   transition: color $transition-fast, background-color $transition-fast;
   white-space: nowrap;
 
+  // Tablet: icon-only compact padding
+  @media (min-width: $bp-md) and (max-width: #{$bp-xl - 1px}) {
+    padding: $space-2;
+  }
+
   &:hover {
     color: var(--color-foreground);
     background-color: var(--color-surface-hover);
@@ -55,6 +81,12 @@
     color: var(--color-foreground);
     background-color: var(--color-surface-hover);
   }
+}
+
+// Icon inside navLink — always shown
+.navLinkIcon {
+  display: inline-flex;
+  flex-shrink: 0;
 }
 
 .primaryLink {
@@ -71,33 +103,52 @@
   transition: background-color $transition-fast;
   white-space: nowrap;
 
+  // Tablet: compact
+  @media (min-width: $bp-md) and (max-width: #{$bp-xl - 1px}) {
+    padding: $space-2;
+  }
+
   &:hover {
     background-color: var(--color-accent-hover);
   }
 }
 
+// ─── Actions (right side of header) ───────────────────
 .actions {
   display: flex;
   align-items: center;
   gap: $space-2;
   flex-shrink: 0;
-}
+  margin-left: auto;
 
-.headerSearch {
-  display: none;
-  flex: 0 1 20rem;
-  margin-right: $space-2;
-
-  @media (min-width: $bp-lg) {
-    display: block;
+  // When desktopNav is visible, don't push to right with margin-left
+  @media (min-width: $bp-md) {
+    margin-left: 0;
   }
 }
 
-.mobileSearch {
-  padding: $space-3 $space-4;
-  border-bottom: 1px solid var(--color-border);
+// ─── Search ───────────────────────────────────────────
+.searchWrapper {
+  display: none;
+  flex: 1;
+  max-width: 20rem;
+  margin: 0 $space-2;
+
+  @media (min-width: $bp-md) {
+    display: block;
+    max-width: 14rem;
+  }
+
+  @media (min-width: $bp-xl) {
+    max-width: 20rem;
+  }
 }
 
+.mobileSearchWrapper {
+  padding: 0 $space-4 $space-2;
+}
+
+// ─── Add Button ───────────────────────────────────────
 .addButton {
   display: inline-flex;
   align-items: center;
@@ -115,6 +166,7 @@
   }
 }
 
+// ─── Theme Toggle (header — tablet/desktop only) ──────
 .themeToggle {
   display: inline-flex;
   align-items: center;
@@ -131,12 +183,22 @@
   }
 }
 
+// Hidden on mobile (<768px), visible on tablet+ (≥768px)
+.themeToggleDesktop {
+  display: none;
+
+  @media (min-width: $bp-md) {
+    display: inline-flex;
+  }
+}
+
 .themeTogglePlaceholder {
   display: inline-block;
   width: 18px;
   height: 18px;
 }
 
+// ─── Hamburger (mobile only, right-most element) ──────
 .hamburger {
   display: inline-flex;
   align-items: center;
@@ -151,11 +213,12 @@
     background-color: var(--color-surface-hover);
   }
 
-  @media (min-width: $bp-lg) {
+  @media (min-width: $bp-md) {
     display: none;
   }
 }
 
+// ─── Overlay ──────────────────────────────────────────
 .overlay {
   position: fixed;
   inset: 0;
@@ -165,11 +228,12 @@
   padding: 0;
   cursor: default;
 
-  @media (min-width: $bp-lg) {
+  @media (min-width: $bp-md) {
     display: none;
   }
 }
 
+// ─── Mobile Nav (slide-in from right) ─────────────────
 .mobileNav {
   position: fixed;
   top: 4rem;
@@ -190,7 +254,7 @@
     transform: translateX(0);
   }
 
-  @media (min-width: $bp-lg) {
+  @media (min-width: $bp-md) {
     display: none;
   }
 }
@@ -246,7 +310,32 @@
   }
 }
 
+// Theme toggle inside mobile menu
+.mobileThemeToggle {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  width: 100%;
+  font-size: $text-sm;
+  font-weight: $weight-medium;
+  color: var(--color-foreground-muted);
+  background: none;
+  border: none;
+  border-radius: $radius-md;
+  cursor: pointer;
+  transition: color $transition-fast, background-color $transition-fast;
+
+  &:hover {
+    color: var(--color-foreground);
+    background-color: var(--color-surface-hover);
+  }
+}
+
 .mobileFooter {
   padding: $space-4;
   border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
 }

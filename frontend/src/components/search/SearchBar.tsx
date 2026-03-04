@@ -8,14 +8,16 @@ interface SearchBarProps {
   onSearch: (query: string) => void;
   debounce?: number;
   placeholder?: string;
+  initialValue?: string;
 }
 
 export function SearchBar({
   onSearch,
   debounce = 300,
   placeholder = "名刺を検索...",
+  initialValue = "",
 }: SearchBarProps) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initialValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fireSearch = useCallback(
