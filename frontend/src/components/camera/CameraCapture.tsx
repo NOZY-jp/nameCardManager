@@ -100,20 +100,42 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
 
     const imageData = canvas.toDataURL("image/jpeg", 0.92);
 
-    // Compute guideRect in video-pixel coordinates
+    // Map guideFrame CSS position → native video pixels, accounting for
+    // object-fit:cover (uniform scale + centre crop).
     let guideRect: GuideRect | undefined;
     if (guideFrame) {
       const videoRect = video.getBoundingClientRect();
       const frameRect = guideFrame.getBoundingClientRect();
 
-      const scaleX = (video.videoWidth || 640) / videoRect.width;
-      const scaleY = (video.videoHeight || 480) / videoRect.height;
+      const natW = video.videoWidth || 640;
+      const natH = video.videoHeight || 480;
+      const contW = videoRect.width;
+      const contH = videoRect.height;
+
+      const videoAspect = natW / natH;
+      const containerAspect = contW / contH;
+
+      let scale: number;
+      let offsetX: number;
+      let offsetY: number;
+
+      if (videoAspect > containerAspect) {
+        // Horizontal cropping
+        scale = contH / natH;
+        offsetX = (natW * scale - contW) / 2;
+        offsetY = 0;
+      } else {
+        // Vertical cropping
+        scale = contW / natW;
+        offsetX = 0;
+        offsetY = (natH * scale - contH) / 2;
+      }
 
       guideRect = {
-        x: (frameRect.left - videoRect.left) * scaleX,
-        y: (frameRect.top - videoRect.top) * scaleY,
-        width: frameRect.width * scaleX,
-        height: frameRect.height * scaleY,
+        x: (frameRect.left - videoRect.left + offsetX) / scale,
+        y: (frameRect.top - videoRect.top + offsetY) / scale,
+        width: frameRect.width / scale,
+        height: frameRect.height / scale,
       };
     }
 

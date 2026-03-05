@@ -74,6 +74,7 @@ tasks:
       - task: install
       - task: frontend:build
       - task: up
+      - task: db:migrate
 
   # ----------------------------------------------------------------
   # インフラ関連
@@ -85,3 +86,7 @@ tasks:
   down:
     desc: コンテナを停止
     cmd: "{{.COMPOSE_CMD}} down"
+
+  db:migrate:
+    desc: 🗄️ Dockerコンテナ内でDBマイグレーションを実行
+    cmd: "{{.COMPOSE_CMD}} exec backend alembic upgrade head"
