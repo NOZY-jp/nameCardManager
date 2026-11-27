@@ -1,6 +1,12 @@
 "use client";
 
-import { Camera, ChevronDown, ImagePlus, RefreshCw, Upload } from "lucide-react";
+import {
+  Camera,
+  ChevronDown,
+  ImagePlus,
+  RefreshCw,
+  Upload,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import styles from "./ImageActionMenu.module.scss";

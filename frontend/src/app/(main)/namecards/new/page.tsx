@@ -67,7 +67,11 @@ export default function NewNameCardPage() {
     try {
       const createData: NameCardCreateData = {
         ...data,
-        image_paths: data.image_paths?.length ? data.image_paths : data.image_path ? [data.image_path] : [],
+        image_paths: data.image_paths?.length
+          ? data.image_paths
+          : data.image_path
+            ? [data.image_path]
+            : [],
       };
       await createNameCard(createData);
       toast({ type: "success", message: "名刺を登録しました" });

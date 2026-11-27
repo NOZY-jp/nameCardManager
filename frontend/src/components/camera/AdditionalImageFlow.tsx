@@ -4,59 +4,16 @@ import { Camera, Upload } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { imageApi } from "@/lib/api/images";
 import { Button } from "../ui/button";
+import styles from "./AdditionalImageFlow.module.scss";
 import { CameraCapture, type GuideRect } from "./CameraCapture";
 import { type CornerPoint, CornerSelector } from "./CornerSelector";
-import styles from "./AdditionalImageFlow.module.scss";
 
 type FlowStep = "select" | "camera" | "corners" | "processing";
-
-const CARD_ASPECT = 1.75;
-
-function getDefaultCornersForImage(
-  width: number,
-  height: number,
-  guideRect?: GuideRect,
-): CornerPoint[] {
-  if (guideRect) {
-    return [
-      { x: guideRect.x, y: guideRect.y },
-      { x: guideRect.x + guideRect.width, y: guideRect.y },
-      { x: guideRect.x + guideRect.width, y: guideRect.y + guideRect.height },
-      { x: guideRect.x, y: guideRect.y + guideRect.height },
-    ];
-  }
-
-  const maxW = width * 0.8;
-  const maxH = height * 0.8;
-  const frameW = Math.min(maxW, maxH * CARD_ASPECT);
-  const frameH = frameW / CARD_ASPECT;
-  const x0 = (width - frameW) / 2;
-  const y0 = (height - frameH) / 2;
-
-  return [
-    { x: x0, y: y0 },
-    { x: x0 + frameW, y: y0 },
-    { x: x0 + frameW, y: y0 + frameH },
-    { x: x0, y: y0 + frameH },
-  ];
-}
 
 async function dataUrlToFile(dataUrl: string, filename: string): Promise<File> {
   const res = await fetch(dataUrl);
   const blob = await res.blob();
   return new File([blob], filename, { type: blob.type });
-}
-
-function getImageNaturalSize(
-  dataUrl: string,
-): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () =>
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
 }
 
 interface AdditionalImageFlowProps {
@@ -153,9 +110,7 @@ export function AdditionalImageFlow({
   }, []);
 
   if (step === "camera") {
-    return (
-      <CameraCapture onCapture={handleCameraCapture} onClose={onCancel} />
-    );
+    return <CameraCapture onCapture={handleCameraCapture} onClose={onCancel} />;
   }
 
   if (step === "corners" && capturedImage) {

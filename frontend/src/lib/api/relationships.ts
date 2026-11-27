@@ -21,7 +21,9 @@ export interface RelationshipUpdateData {
 // ─── API Functions ───────────────────────────────────────
 
 export async function getRelationships(): Promise<RelationshipNode[]> {
-  const response = await apiClient.get<RelationshipNode[]>("/relationships/tree");
+  const response = await apiClient.get<RelationshipNode[]>(
+    "/relationships/tree",
+  );
   return response.data;
 }
 

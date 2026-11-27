@@ -63,10 +63,7 @@ export function NameCardDetail({
       </div>
 
       {card.images?.length > 0 && (
-        <ImageGallery
-          namecardId={String(card.id)}
-          images={card.images}
-        />
+        <ImageGallery namecardId={String(card.id)} images={card.images} />
       )}
 
       {(card.company_name || card.department || card.position) && (
@@ -104,11 +101,12 @@ export function NameCardDetail({
               return (
                 <div key={rel.id} className={styles.relationshipPath}>
                   {parts.map((part, idx) => (
-                    <span key={`${rel.id}-${part}`} className={styles.relationshipSegment}>
+                    <span
+                      key={`${rel.id}-${part}`}
+                      className={styles.relationshipSegment}
+                    >
                       {idx > 0 && (
-                        <span className={styles.relationshipSeparator}>
-                          /
-                        </span>
+                        <span className={styles.relationshipSeparator}>/</span>
                       )}
                       <span
                         className={

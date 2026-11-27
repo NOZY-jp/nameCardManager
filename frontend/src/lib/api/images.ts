@@ -56,7 +56,9 @@ export const imageApi = {
     return response.data;
   },
 
-  async processAdditional(params: ProcessImageRequest): Promise<ProcessAdditionalResponse> {
+  async processAdditional(
+    params: ProcessImageRequest,
+  ): Promise<ProcessAdditionalResponse> {
     const response = await apiClient.post<ProcessAdditionalResponse>(
       "/images/process-additional",
       { upload_id: params.upload_id, corners: params.corners },

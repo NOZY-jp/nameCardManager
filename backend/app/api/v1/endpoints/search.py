@@ -86,7 +86,7 @@ def _build_namecard_response(nc: NameCard, db: DbSession) -> dict:
         "company_name": nc.company_name,
         "department": nc.department,
         "position": nc.position,
-        "image_path": nc.image_path,
+        "image_path": nc.images[0].image_path if nc.images else None,
         "met_notes": nc.met_notes,
         "memo": nc.memo,
         "contact_methods": [
