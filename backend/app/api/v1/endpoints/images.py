@@ -32,6 +32,56 @@ from app.schemas import NameCardImageResponse
 
 logger = logging.getLogger(__name__)
 
+# ─── OCR の構造化出力スキーマ ─────────────────────────────
+# Gemini の structured output（response_mime_type=application/json）で
+# モデルに厳密な JSON を生成させる。OpenAPI サブセットの dict で指定する。
+CONTACT_METHOD_TYPES = [
+    "email",
+    "tel",
+    "mobile",
+    "fax",
+    "website",
+    "x",
+    "instagram",
+    "youtube",
+    "discord",
+    "booth",
+    "github",
+    "linkedin",
+    "facebook",
+    "line",
+    "tiktok",
+    "address",
+    "other",
+]
+
+OCR_RESPONSE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "first_name": {"type": "string"},
+        "last_name": {"type": "string"},
+        "first_name_kana": {"type": "string", "nullable": True},
+        "last_name_kana": {"type": "string", "nullable": True},
+        "company_name": {"type": "string", "nullable": True},
+        "department": {"type": "string", "nullable": True},
+        "position": {"type": "string", "nullable": True},
+        "memo": {"type": "string", "nullable": True},
+        "contact_methods": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": CONTACT_METHOD_TYPES},
+                    "value": {"type": "string"},
+                    "is_primary": {"type": "boolean"},
+                },
+                "required": ["type", "value", "is_primary"],
+            },
+        },
+    },
+    "required": ["first_name", "last_name", "contact_methods"],
+}
+
 router = APIRouter()
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -107,6 +157,7 @@ def process_image_ocr(image_bytes: bytes) -> dict[str, Any]:
 
     try:
         from google import genai  # type: ignore[import-untyped]
+        from google.genai import types  # type: ignore[import-untyped]
 
         client = genai.Client(api_key=api_key)
 
@@ -131,7 +182,7 @@ def process_image_ocr(image_bytes: bytes) -> dict[str, Any]:
         image_data = base64.b64encode(image_bytes).decode("utf-8")
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=settings.gemini_model,
             contents=[
                 {
                     "parts": [
@@ -145,6 +196,10 @@ def process_image_ocr(image_bytes: bytes) -> dict[str, Any]:
                     ]
                 }
             ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=OCR_RESPONSE_SCHEMA,
+            ),
         )
 
         import json

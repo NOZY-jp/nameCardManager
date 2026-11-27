@@ -45,6 +45,10 @@ class Settings(BaseSettings):
         default="",
         description="Gemini API キー",
     )
+    gemini_model: str = Field(
+        default="gemini-2.5-flash-lite",
+        description="OCR に使う Gemini モデル（マルチモーダル・structured output 対応）",
+    )
 
     # --- CORS ---
     allowed_origins: list[str] = Field(
