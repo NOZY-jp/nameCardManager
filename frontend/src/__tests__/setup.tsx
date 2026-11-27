@@ -15,9 +15,9 @@ vi.mock("next/navigation", async () => {
   const { getRouterMock } = await import("@/__tests__/utils/mocks/router");
   return {
     useRouter: () => getRouterMock(),
-    useSearchParams: () => new URLSearchParams(),
-    usePathname: () => "/",
-    useParams: () => ({}),
+    useSearchParams: vi.fn(() => new URLSearchParams()),
+    usePathname: vi.fn(() => "/"),
+    useParams: vi.fn(() => ({})),
     redirect: vi.fn(),
     notFound: vi.fn(),
   };

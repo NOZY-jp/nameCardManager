@@ -80,6 +80,12 @@ export function Header() {
     setMobileOpen(false);
   }, []);
 
+  const handleLogout = useCallback(() => {
+    logout();
+    closeMobile();
+    router.replace("/login");
+  }, [closeMobile, logout, router]);
+
   useEffect(() => {
     if (pathname) {
       setMobileOpen(false);
@@ -153,7 +159,11 @@ export function Header() {
               onClick={toggleTheme}
               aria-label="テーマ切替"
             >
-              {resolvedTheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+              {resolvedTheme === "dark" ? (
+                <Sun size={18} />
+              ) : (
+                <Moon size={18} />
+              )}
             </button>
           ) : (
             <button
@@ -166,7 +176,7 @@ export function Header() {
           )}
 
           {user && (
-            <Button variant="ghost" size="sm" onClick={logout}>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut size={16} />
               ログアウト
             </Button>
@@ -257,14 +267,7 @@ export function Header() {
 
         {user && (
           <div className={styles.mobileFooter}>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                logout();
-                closeMobile();
-              }}
-            >
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut size={16} />
               ログアウト
             </Button>

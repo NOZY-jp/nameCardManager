@@ -38,15 +38,10 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormData) => {
     setServerError("");
     try {
-      const res = await registerApi(data);
-      localStorage.setItem("access_token", res.access_token);
-      if (res.refresh_token) {
-        localStorage.setItem("refresh_token", res.refresh_token);
-      }
-      // Auto-login after registration by logging in through context
+      await registerApi(data);
       await login(data.email, data.password);
       toast({ type: "success", message: "アカウントを作成しました" });
-      router.push("/namecards");
+      router.replace("/namecards");
     } catch (err: unknown) {
       const message =
         err instanceof Error
