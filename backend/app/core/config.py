@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     ocr_provider: str = Field(
         default="gemini",
         description=(
-            "OCR プロバイダ ('ndl' / 'bedrock' / 'gemini' / 'none')。"
+            "OCR プロバイダ ('ndl' / 'vertex' / 'bedrock' / 'gemini' / 'none')。"
             "'ndl' は自前の ocr-service（NDLOCR-Lite）を OCR_SERVICE_URL に呼ぶ。"
             "既定は従来の挙動（gemini）を保つ"
         ),
@@ -74,6 +74,20 @@ class Settings(BaseSettings):
     ocr_strict_failure: bool = Field(
         default=False,
         description="true なら OCR 失敗時に 503 を返す（false は空の名刺を返す）",
+    )
+
+    # --- Vertex AI（Google Cloud の後払い） ---
+    vertex_project: str = Field(
+        default="",
+        description="Vertex AI のプロジェクト ID（OCR_PROVIDER=vertex のとき必須）",
+    )
+    vertex_location: str = Field(
+        default="global",
+        description="Vertex AI のロケーション（既定 global。リージョン指定は +10% の単価）",
+    )
+    vertex_model: str = Field(
+        default="gemini-3.1-flash-lite",
+        description="Vertex AI の Gemini モデル（2.5 系は提供終了）",
     )
 
     # --- AWS Bedrock ---

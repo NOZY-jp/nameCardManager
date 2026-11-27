@@ -32,6 +32,10 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - OCR_PROVIDER=${OCR_PROVIDER:-ndl}
       - OCR_SERVICE_URL=${OCR_SERVICE_URL:-http://ocr:8100}
+      - VERTEX_PROJECT=${VERTEX_PROJECT:-}
+      - VERTEX_LOCATION=${VERTEX_LOCATION:-global}
+      - VERTEX_MODEL=${VERTEX_MODEL:-gemini-3.1-flash-lite}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/secrets/vertex-sa.json
       - OCR_STRICT_FAILURE=${OCR_STRICT_FAILURE:-false}
       - OCR_TIMEOUT_SECONDS=${OCR_TIMEOUT_SECONDS:-30}
       - AWS_REGION=${AWS_REGION:-ap-northeast-1}
@@ -40,6 +44,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
     volumes:
       - upload_data:/app/uploads
+      - ./secrets/vertex-sa.json:/app/secrets/vertex-sa.json:ro
     env_file:
       - .env.prod
     depends_on:

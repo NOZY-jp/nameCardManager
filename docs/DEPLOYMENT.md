@@ -91,6 +91,12 @@ BEDROCK_MODEL_ID=amazon.nova-lite-v1:0
 AWS_ACCESS_KEY_ID=...           # Bedrock を呼べる IAM ユーザーのキー
 AWS_SECRET_ACCESS_KEY=...
 
+# --- Vertex AI（OCR_PROVIDER=vertex。Google Cloud の後払い） ---
+VERTEX_PROJECT=fluid-crane-482105-s3
+VERTEX_LOCATION=global
+VERTEX_MODEL=gemini-3.1-flash-lite
+# サービスアカウント鍵は secrets/vertex-sa.json に置く（compose が :ro でマウントする）
+
 # --- Gemini API（OCR_PROVIDER=gemini のときのみ） ---
 GEMINI_API_KEY=
 ```
@@ -101,6 +107,7 @@ GEMINI_API_KEY=
 | `SECRET_KEY` | JWT 署名鍵 |
 | `OCR_PROVIDER` | OCR の実装。`ndl` / `bedrock` / `gemini` / `none`（compose の既定は `ndl`） |
 | `OCR_SERVICE_URL` | `OCR_PROVIDER=ndl` のときの OCR サービス（既定 `http://ocr:8100`） |
+| `VERTEX_PROJECT` / `VERTEX_LOCATION` / `VERTEX_MODEL` | `OCR_PROVIDER=vertex` のときの Vertex AI 設定（既定 `global` / `gemini-3.1-flash-lite`） |
 | `OCR_STRICT_FAILURE` | `true` なら OCR 失敗時に 503 を返す。`false` は空の名刺を返す |
 | `AWS_REGION` / `BEDROCK_MODEL_ID` | Bedrock のリージョンとモデル（画像入力対応のもの） |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Bedrock を呼ぶ IAM 資格情報（`.env.prod` は 600 で保存） |
@@ -193,6 +200,20 @@ docker compose logs -f ocr
 ```
 
 `OCR_PROVIDER=gemini` に戻せば従来の Gemini 経路で動く（ocr コンテナは起動したままでよい）。
+
+### Vertex AI（後払い）に切り替える
+
+Gemini に画像から直接項目を出させたいときは `OCR_PROVIDER=vertex` にする。画像は Google Cloud へ送信される。
+
+1. プロジェクトで **Agent Platform API（aiplatform.googleapis.com）を有効化**（済み）
+2. サービスアカウント `namecard-ocr`（ロール: Agent Platform ユーザー = `roles/aiplatform.user`）の鍵を `secrets/vertex-sa.json` に置く（600、Git 管理外）
+3. `.env.prod` に `OCR_PROVIDER=vertex` と `VERTEX_PROJECT` を設定
+4. `docker compose up -d --build backend`（backend のみ再ビルド）
+
+- 単価は Gemini API と同額（3.1 Flash-Lite: 入力 $0.25 / 出力 $1.50、100万トークン）。名刺1枚あたり入力約1,700・出力約350トークンで **約14銭/枚**。¥200/月なら約1,400枚。
+- 2.5 / 2.0 系は Vertex では提供終了のため 404 になる（既定は 3.1 Flash-Lite）。
+- Vertex は Google Cloud の後払いで、AI Studio の前払い残高やプロジェクト月次上限（¥200）は適用されない。上限は Cloud の**予算アラート**で監視する。
+- 鍵はコンテナ内 `/app/secrets/vertex-sa.json`（読み取り専用）。鍵を置かずに `OCR_PROVIDER=vertex` にすると認証で失敗する。
 
 ---
 

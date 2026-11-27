@@ -6,6 +6,7 @@
 - ``ndl``: 自前の NDLOCR-Lite サービス（``ocr-service``）。日本語・縦書き対応、無料、
   名刺画像はサーバー外に出ない。文字起こしだけを任せ、項目の切り出しは
   :mod:`app.services.card_parser` の辞書・正規表現で行う。
+- ``vertex``: Google Cloud Vertex AI（後払い）。Gemini が画像から直接項目を返す。
 - ``gemini``: Google Gemini（従来実装）。プリペイド残高が必要。
 - ``none``: 外部呼び出しをせず空の結果を返す（開発・テスト用）。
 
@@ -320,6 +321,82 @@ def _ocr_bedrock(image_bytes: bytes, settings: Settings) -> dict[str, Any]:
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  プロバイダ: Vertex AI（Google Cloud の後払い）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+_vertex_client: Any = None
+_vertex_client_key: tuple[str, str] | None = None
+
+
+def _build_vertex_client(settings: Settings) -> Any:
+    """Vertex AI のクライアントを作る（プロジェクトとリージョンごとに使い回す）。
+
+    認証はアプリケーション既定の資格情報（``GOOGLE_APPLICATION_CREDENTIALS`` が
+    指すサービスアカウント鍵、または ADC）。鍵の中身はここでは扱わない。
+    """
+    global _vertex_client, _vertex_client_key  # noqa: PLW0603
+
+    if not settings.vertex_project:
+        msg = "VERTEX_PROJECT が設定されていません"
+        raise OcrError(msg)
+
+    key = (settings.vertex_project, settings.vertex_location)
+    if _vertex_client is not None and _vertex_client_key == key:
+        return _vertex_client
+
+    from google import genai  # 遅延 import（未導入の環境でも他プロバイダで動かす）
+    from google.genai import types
+
+    client = genai.Client(
+        vertexai=True,
+        project=settings.vertex_project,
+        location=settings.vertex_location,
+        http_options=types.HttpOptions(timeout=settings.ocr_timeout_seconds * 1000),
+    )
+    _vertex_client = client
+    _vertex_client_key = key
+    return client
+
+
+def _ocr_vertex(image_bytes: bytes, settings: Settings) -> dict[str, Any]:
+    from google.genai import types
+
+    image_format = detect_image_format(image_bytes)
+    client = _build_vertex_client(settings)
+
+    try:
+        response = client.models.generate_content(
+            model=settings.vertex_model,
+            contents=[
+                types.Part.from_text(text=OCR_PROMPT),
+                types.Part.from_bytes(data=image_bytes, mime_type=f"image/{image_format}"),
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=OCR_RESPONSE_SCHEMA,
+                temperature=0.0,
+            ),
+        )
+    except Exception as exc:  # SDK 固有の例外をまとめて扱う
+        msg = f"Vertex AI の呼び出しに失敗しました: {exc}"
+        raise OcrError(msg) from exc
+
+    text = getattr(response, "text", "") or ""
+    if not text.strip():
+        msg = "Vertex AI の応答が空です"
+        raise OcrError(msg)
+
+    usage = getattr(response, "usage_metadata", None)
+    logger.info(
+        "vertex ocr done model=%s in=%s out=%s",
+        settings.vertex_model,
+        getattr(usage, "prompt_token_count", None),
+        getattr(usage, "candidates_token_count", None),
+    )
+    return parse_json_response(text)
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  プロバイダ: Google Gemini（従来実装）
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -426,8 +503,9 @@ def _ocr_ndl(image_bytes: bytes, settings: Settings) -> dict[str, Any]:
 
 _PROVIDERS = {
     "bedrock": _ocr_bedrock,
-    "ndl": _ocr_ndl,
     "gemini": _ocr_gemini,
+    "ndl": _ocr_ndl,
+    "vertex": _ocr_vertex,
 }
 
 
@@ -447,7 +525,7 @@ def extract_business_card(
 
     handler = _PROVIDERS.get(provider)
     if handler is None:
-        msg = f"未知の OCR_PROVIDER です: {provider}（ndl / bedrock / gemini / none）"
+        msg = f"未知の OCR_PROVIDER です: {provider}（ndl / vertex / bedrock / gemini / none）"
         raise OcrError(msg)
 
     raw = handler(image_bytes, settings)

@@ -442,3 +442,85 @@ def test_ndl_non_json_response_raises(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(ocr.OcrError):
         ocr.extract_business_card(JPEG, ndl_settings())
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  Vertex AI（Google Cloud の後払い）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+class FakeVertexResponse:
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self.usage_metadata = type(
+            "Usage", (), {"prompt_token_count": 1734, "candidates_token_count": 346}
+        )()
+
+
+def patch_vertex(monkeypatch: pytest.MonkeyPatch, result: Any) -> list[dict[str, Any]]:
+    calls: list[dict[str, Any]] = []
+
+    class FakeModels:
+        def generate_content(self, **kwargs: Any) -> Any:
+            calls.append(kwargs)
+            if isinstance(result, Exception):
+                raise result
+            return result
+
+    class FakeClient:
+        models = FakeModels()
+
+    monkeypatch.setattr(ocr, "_build_vertex_client", lambda _settings: FakeClient())
+    return calls
+
+
+def vertex_settings(**kwargs: Any) -> Settings:
+    base: dict[str, Any] = {
+        "ocr_provider": "vertex",
+        "vertex_project": "fluid-crane-482105-s3",
+        "vertex_location": "global",
+        "vertex_model": "gemini-3.1-flash-lite",
+    }
+    base.update(kwargs)
+    return Settings(_env_file=None, **base)
+
+
+def test_vertex_sends_image_and_parses(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = patch_vertex(
+        monkeypatch, FakeVertexResponse(json.dumps(CARD, ensure_ascii=False))
+    )
+
+    result = ocr.extract_business_card(PNG, vertex_settings())
+
+    assert result["company_name"] == "株式会社サンプルテック"
+    assert result["last_name"] == "山田"
+    assert result["contact_methods"][0]["is_primary"] is True
+
+    sent = calls[0]
+    assert sent["model"] == "gemini-3.1-flash-lite"
+    assert sent["config"].response_mime_type == "application/json"
+    assert sent["config"].temperature == 0.0
+    parts = sent["contents"]
+    assert parts[1].inline_data.mime_type == "image/png"
+
+
+def test_vertex_requires_project(monkeypatch: pytest.MonkeyPatch) -> None:
+    ocr._vertex_client = None
+    ocr._vertex_client_key = None
+    with pytest.raises(ocr.OcrError) as excinfo:
+        ocr.extract_business_card(JPEG, vertex_settings(vertex_project=""))
+    assert "VERTEX_PROJECT" in str(excinfo.value)
+
+
+def test_vertex_api_error_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch_vertex(monkeypatch, RuntimeError("404 model not found"))
+
+    with pytest.raises(ocr.OcrError):
+        ocr.extract_business_card(JPEG, vertex_settings())
+
+
+def test_vertex_empty_answer_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch_vertex(monkeypatch, FakeVertexResponse(""))
+
+    with pytest.raises(ocr.OcrError):
+        ocr.extract_business_card(JPEG, vertex_settings())
