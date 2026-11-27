@@ -29,7 +29,14 @@ services:
       - LOG_LEVEL=INFO
       - LOG_FORMAT=json
       - IMAGE_DIR=/app/uploads/images
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OCR_PROVIDER=${OCR_PROVIDER:-gemini}
+      - OCR_STRICT_FAILURE=${OCR_STRICT_FAILURE:-false}
+      - OCR_TIMEOUT_SECONDS=${OCR_TIMEOUT_SECONDS:-30}
+      - AWS_REGION=${AWS_REGION:-ap-northeast-1}
+      - BEDROCK_MODEL_ID=${BEDROCK_MODEL_ID:-amazon.nova-lite-v1:0}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
     volumes:
       - upload_data:/app/uploads
     env_file:

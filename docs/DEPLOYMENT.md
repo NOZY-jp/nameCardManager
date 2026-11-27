@@ -78,15 +78,29 @@ POSTGRES_PASSWORD=...            # openssl rand -base64 24
 # --- JWT ---
 SECRET_KEY=...                   # openssl rand -hex 32
 
-# --- Gemini API（OCR） ---
-GEMINI_API_KEY=...
+# --- OCR（プロバイダ切替） ---
+# bedrock: Amazon Bedrock（後払い・画像1枚230トークン固定）
+# gemini : Gemini（プリペイド残高が必要）
+OCR_PROVIDER=bedrock
+OCR_STRICT_FAILURE=false
+AWS_REGION=ap-northeast-1
+BEDROCK_MODEL_ID=amazon.nova-lite-v1:0
+AWS_ACCESS_KEY_ID=...           # Bedrock を呼べる IAM ユーザーのキー
+AWS_SECRET_ACCESS_KEY=...
+
+# --- Gemini API（OCR_PROVIDER=gemini のときのみ） ---
+GEMINI_API_KEY=
 ```
 
 | 変数 | 用途 |
 | --- | --- |
 | `POSTGRES_PASSWORD` | DB ユーザー `namecard_user` のパスワード |
 | `SECRET_KEY` | JWT 署名鍵 |
-| `GEMINI_API_KEY` | 名刺 OCR（サーバー側からのみ呼ぶ） |
+| `OCR_PROVIDER` | OCR の実装。`bedrock` / `gemini` / `none`（既定 `gemini`） |
+| `OCR_STRICT_FAILURE` | `true` なら OCR 失敗時に 503 を返す。`false` は空の名刺を返す |
+| `AWS_REGION` / `BEDROCK_MODEL_ID` | Bedrock のリージョンとモデル（画像入力対応のもの） |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Bedrock を呼ぶ IAM 資格情報（`.env.prod` は 600 で保存） |
+| `GEMINI_API_KEY` | `OCR_PROVIDER=gemini` のときのみ使う |
 | `NEXT_PUBLIC_API_BASE_URL` | フロントの API ベース。nginx 経由の相対パス `/api/v1`（**ビルド時に埋め込まれる**） |
 
 `NEXT_PUBLIC_API_BASE_URL` はビルド時に埋め込まれるため、変更する場合は `docker compose build` の前に設定する。

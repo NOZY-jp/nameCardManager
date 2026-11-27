@@ -50,6 +50,38 @@ class Settings(BaseSettings):
         description="OCR に使う Gemini モデル（マルチモーダル・structured output 対応）",
     )
 
+    # --- OCR ---
+    ocr_provider: str = Field(
+        default="gemini",
+        description=(
+            "OCR プロバイダ ('bedrock' / 'gemini' / 'none')。"
+            "既定は従来の挙動（gemini）を保つ。Bedrock へ移行するときは "
+            "OCR_PROVIDER=bedrock を明示する"
+        ),
+    )
+    ocr_timeout_seconds: int = Field(
+        default=30,
+        description="OCR の 1 リクエストあたりのタイムアウト（秒）",
+    )
+    ocr_max_tokens: int = Field(
+        default=1024,
+        description="OCR 応答の最大トークン数",
+    )
+    ocr_strict_failure: bool = Field(
+        default=False,
+        description="true なら OCR 失敗時に 503 を返す（false は空の名刺を返す）",
+    )
+
+    # --- AWS Bedrock ---
+    aws_region: str = Field(
+        default="ap-northeast-1",
+        description="Bedrock のリージョン。Nova Lite は us-east-1 などで提供",
+    )
+    bedrock_model_id: str = Field(
+        default="amazon.nova-lite-v1:0",
+        description="Bedrock のモデル ID（画像入力対応のもの）",
+    )
+
     # --- CORS ---
     allowed_origins: list[str] = Field(
         default=["http://localhost:3000"],
