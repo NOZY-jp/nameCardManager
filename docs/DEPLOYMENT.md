@@ -116,6 +116,9 @@ GEMINI_API_KEY=
 
 `NEXT_PUBLIC_API_BASE_URL` はビルド時に埋め込まれるため、変更する場合は `docker compose build` の前に設定する。
 
+> **`.env` と `.env.prod` の使い分け**
+> `docker compose` の `${VAR}` 展開はプロジェクト直下の `.env` を読む。`env_file: .env.prod` はコンテナ内の環境変数用で、`environment:` の値が優先される。そのため OCR の切替値は両方に同じ内容を置く。`.env` には `POSTGRES_PASSWORD` と `SECRET_KEY` も必要（`DATABASE_URL` の組み立てに使う）。どちらも Git 管理外・600。
+
 ---
 
 ## nginx 設定
