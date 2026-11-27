@@ -190,7 +190,8 @@ def test_bedrock_sends_image_and_parses(monkeypatch: pytest.MonkeyPatch) -> None
     sent = client.calls[0]
     assert sent["modelId"] == "amazon.nova-lite-v1:0"
     content = sent["messages"][0]["content"]
-    assert content[0]["text"].startswith("この名刺画像")
+    assert "transcript" in content[0]["text"]
+    assert "推測しない" in content[0]["text"]
     assert content[1]["image"]["format"] == "jpeg"
     assert content[1]["image"]["source"]["bytes"] == JPEG
     assert sent["inferenceConfig"]["temperature"] == 0.0
@@ -283,3 +284,161 @@ def test_safe_variant_returns_empty_on_error() -> None:
         ocr._build_bedrock_client = original  # type: ignore[assignment]
 
     assert result == ocr.empty_result()
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  NDLOCR-Lite（自前サービス）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NDL_PAYLOAD = {
+    "text": "\n".join(
+        [
+            "株式会社サンプルテック",
+            "営業部 課長",
+            "山田 太郎",
+            "taro@example.co.jp",
+            "TEL 03-1234-5678",
+        ]
+    ),
+    "lines": [
+        {"text": "株式会社サンプルテック"},
+        {"text": "営業部 課長"},
+        {"text": "山田 太郎"},
+        {"text": "taro@example.co.jp"},
+        {"text": "TEL 03-1234-5678"},
+    ],
+    "elapsed_ms": 640,
+}
+
+
+class FakeHttpResponse:
+    def __init__(
+        self,
+        status_code: int = 200,
+        payload: dict[str, Any] | None = None,
+        text: str = "",
+    ) -> None:
+        self.status_code = status_code
+        self._payload = payload
+        self.text = text
+
+    def json(self) -> dict[str, Any]:
+        if self._payload is None:
+            msg = "not json"
+            raise ValueError(msg)
+        return self._payload
+
+
+def patch_httpx(monkeypatch: pytest.MonkeyPatch, result: Any) -> list[dict[str, Any]]:
+    """httpx.Client を差し替え、送信内容を記録する。"""
+    import httpx
+
+    calls: list[dict[str, Any]] = []
+
+    class FakeClient:
+        def __init__(self, timeout: Any = None, **_kwargs: Any) -> None:
+            calls.append({"timeout": timeout})
+
+        def __enter__(self) -> FakeClient:
+            return self
+
+        def __exit__(self, *_exc: Any) -> bool:
+            return False
+
+        def post(self, url: str, files: Any = None) -> Any:
+            calls.append({"url": url, "files": files})
+            if isinstance(result, Exception):
+                raise result
+            return result
+
+    monkeypatch.setattr(httpx, "Client", FakeClient)
+    return calls
+
+
+def ndl_settings(**kwargs: Any) -> Settings:
+    base: dict[str, Any] = {
+        "ocr_provider": "ndl",
+        "ocr_service_url": "http://ocr:8100",
+        "ocr_timeout_seconds": 20,
+    }
+    base.update(kwargs)
+    return Settings(_env_file=None, **base)
+
+
+def test_ndl_sends_image_and_parses_lines(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = patch_httpx(monkeypatch, FakeHttpResponse(payload=NDL_PAYLOAD))
+
+    result = ocr.extract_business_card(JPEG, ndl_settings())
+
+    assert result["company_name"] == "株式会社サンプルテック"
+    assert result["department"] == "営業部"
+    assert result["position"] == "課長"
+    assert result["last_name"] == "山田"
+    assert result["first_name"] == "太郎"
+    assert result["contact_methods"][0]["type"] == "email"
+    assert result["contact_methods"][0]["is_primary"] is True
+
+    assert calls[0]["timeout"] == 20
+    assert calls[1]["url"] == "http://ocr:8100/ocr"
+    filename, content, mime = calls[1]["files"]["file"]
+    assert filename == "card.jpeg"
+    assert content == JPEG
+    assert mime == "image/jpeg"
+
+
+def test_ndl_uses_service_url_without_trailing_slash(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = patch_httpx(monkeypatch, FakeHttpResponse(payload=NDL_PAYLOAD))
+
+    ocr.extract_business_card(JPEG, ndl_settings(ocr_service_url="http://ocr:8100/"))
+
+    assert calls[1]["url"] == "http://ocr:8100/ocr"
+
+
+def test_ndl_error_status_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch_httpx(
+        monkeypatch,
+        FakeHttpResponse(status_code=503, payload={"detail": "モデル未読込"}),
+    )
+
+    with pytest.raises(ocr.OcrError) as excinfo:
+        ocr.extract_business_card(JPEG, ndl_settings())
+
+    assert "503" in str(excinfo.value)
+    assert "モデル未読込" in str(excinfo.value)
+
+
+def test_ndl_connection_error_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    import httpx
+
+    patch_httpx(monkeypatch, httpx.ConnectError("refused"))
+
+    with pytest.raises(ocr.OcrError):
+        ocr.extract_business_card(JPEG, ndl_settings())
+
+
+def test_ndl_timeout_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    import httpx
+
+    patch_httpx(monkeypatch, httpx.ConnectTimeout("slow"))
+
+    with pytest.raises(ocr.OcrError):
+        ocr.extract_business_card(JPEG, ndl_settings())
+
+
+def test_ndl_empty_text_returns_empty_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch_httpx(
+        monkeypatch, FakeHttpResponse(payload={"text": "", "lines": [], "elapsed_ms": 30})
+    )
+
+    result = ocr.extract_business_card(JPEG, ndl_settings())
+
+    assert result == ocr.empty_result()
+
+
+def test_ndl_non_json_response_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch_httpx(monkeypatch, FakeHttpResponse(text="<html>oops</html>"))
+
+    with pytest.raises(ocr.OcrError):
+        ocr.extract_business_card(JPEG, ndl_settings())

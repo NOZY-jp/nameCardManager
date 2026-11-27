@@ -43,7 +43,8 @@ nozyjp-server :80  nginx（server_name name.nozyjp.com）
    ├── /api/  → 127.0.0.1:8000  FastAPI
    └── /     → 127.0.0.1:3001  Next.js（コンテナ内 3000）
                   │
-                db:5432  PostgreSQL 16 + pg_bigm
+   backend ──┬── db:5432   PostgreSQL 16 + pg_bigm
+             └── ocr:8100  NDLOCR-Lite（日本語・縦書き対応、CPU、無料）
 ```
 
 - 全コンテナのポートは `127.0.0.1` にバインドし、外部からは直接到達できない。
@@ -79,9 +80,11 @@ POSTGRES_PASSWORD=...            # openssl rand -base64 24
 SECRET_KEY=...                   # openssl rand -hex 32
 
 # --- OCR（プロバイダ切替） ---
+# ndl    : 自前の ocr-service（NDLOCR-Lite）。無料・縦書き対応・画像は外部に出ない
 # bedrock: Amazon Bedrock（後払い・画像1枚230トークン固定）
 # gemini : Gemini（プリペイド残高が必要）
-OCR_PROVIDER=bedrock
+OCR_PROVIDER=ndl
+OCR_SERVICE_URL=http://ocr:8100
 OCR_STRICT_FAILURE=false
 AWS_REGION=ap-northeast-1
 BEDROCK_MODEL_ID=amazon.nova-lite-v1:0
@@ -96,7 +99,8 @@ GEMINI_API_KEY=
 | --- | --- |
 | `POSTGRES_PASSWORD` | DB ユーザー `namecard_user` のパスワード |
 | `SECRET_KEY` | JWT 署名鍵 |
-| `OCR_PROVIDER` | OCR の実装。`bedrock` / `gemini` / `none`（既定 `gemini`） |
+| `OCR_PROVIDER` | OCR の実装。`ndl` / `bedrock` / `gemini` / `none`（compose の既定は `ndl`） |
+| `OCR_SERVICE_URL` | `OCR_PROVIDER=ndl` のときの OCR サービス（既定 `http://ocr:8100`） |
 | `OCR_STRICT_FAILURE` | `true` なら OCR 失敗時に 503 を返す。`false` は空の名刺を返す |
 | `AWS_REGION` / `BEDROCK_MODEL_ID` | Bedrock のリージョンとモデル（画像入力対応のもの） |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Bedrock を呼ぶ IAM 資格情報（`.env.prod` は 600 で保存） |
@@ -168,7 +172,27 @@ docker compose up -d
 docker compose ps
 ```
 
-起動後の構成は `frontend`（`127.0.0.1:3001`→3000）、`backend`（`127.0.0.1:8000`）、`db`（`127.0.0.1:5432`）の3コンテナ。
+起動後の構成は `frontend`（`127.0.0.1:3001`→3000）、`backend`（`127.0.0.1:8000`）、`ocr`（`127.0.0.1:8100`）、`db`（`127.0.0.1:5432`）の4コンテナ。
+
+### OCR サービス（ocr-service）
+
+`ocr-service/` は NDLOCR-Lite（国立国会図書館製、CC BY 4.0）を CPU で動かす小さな HTTP サービス。画像を受け取り、行単位のテキストだけを返す。項目の切り出し（氏名・会社名・住所）は backend 側の辞書・正規表現が行う。
+
+- イメージサイズは約 1.5GB（モデル 151MB をビルド時に取得する）。初回ビルドは数分かかる。
+- 起動直後はモデルの読み込みに 10〜20 秒かかり、その間 `/health` は 503 を返す（`start_period: 120s`）。
+- メモリは常駐で約 0.7GB。`friend-gpt-relay` など他の常駐プロセスと同居する前提で、VM の空きメモリ 6GB に対して余裕がある。
+- 画像は保存せず、外部へ送らない。`127.0.0.1:8100` のみに公開し、nginx からは公開しない。
+
+```bash
+# 単体での動作確認（backend を経由しない）
+curl -s http://127.0.0.1:8100/health
+curl -s -F "file=@card.png" http://127.0.0.1:8100/ocr | head -c 400
+
+# ログ
+docker compose logs -f ocr
+```
+
+`OCR_PROVIDER=gemini` に戻せば従来の Gemini 経路で動く（ocr コンテナは起動したままでよい）。
 
 ---
 
@@ -303,6 +327,18 @@ docker compose exec db psql -U namecard_user -d namecard
 docker compose logs db
 ```
 
+### OCR が空になる／`503` が返る
+
+```bash
+docker compose ps ocr                      # healthy か（起動直後は preparing）
+docker compose logs --tail=50 ocr          # モデル読み込みの失敗はここに出る
+curl -s http://127.0.0.1:8100/health       # {"status":"ok","model_loaded":true,...}
+docker compose exec backend env | grep OCR_
+```
+
+- `OCR_PROVIDER=ndl` なのに `ocr` が unhealthy のとき、`OCR_STRICT_FAILURE=false`（既定）では空の名刺が保存される。原因が見えたら `true` にして 503 を返す。
+- 1 枚あたり 1 秒前後で返る。10 秒を超える場合はモデルが再読み込みされている（コンテナ再起動直後）か、CPU が飽和している。
+
 ### 画像アップロードが失敗する
 
 ```bash
@@ -320,6 +356,7 @@ docker volume ls | grep upload
 | `80` | nginx | `0.0.0.0` | cloudflared → nginx。公開 URL のオリジン |
 | `3001` | frontend（Docker） | `127.0.0.1` | nginx → frontend（コンテナ内 3000） |
 | `8000` | backend（Docker） | `127.0.0.1` | nginx → FastAPI |
+| `8100` | ocr（Docker） | `127.0.0.1` | backend → NDLOCR-Lite。外部公開しない |
 | `5432` | PostgreSQL（Docker） | `127.0.0.1` | DB 内部接続のみ |
 | `3000` | — | — | VM 上の別サービスが使用中。使用不可 |
 | `8080` | — | — | 別サービス（`smarthome_nozyjp`）が使用中 |

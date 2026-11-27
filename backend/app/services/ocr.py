@@ -3,6 +3,9 @@
 プロバイダは `OCR_PROVIDER` で切り替える。
 
 - ``bedrock``: Amazon Bedrock（Amazon Nova Lite など）。後払い・画像1枚230トークン固定課金。
+- ``ndl``: 自前の NDLOCR-Lite サービス（``ocr-service``）。日本語・縦書き対応、無料、
+  名刺画像はサーバー外に出ない。文字起こしだけを任せ、項目の切り出しは
+  :mod:`app.services.card_parser` の辞書・正規表現で行う。
 - ``gemini``: Google Gemini（従来実装）。プリペイド残高が必要。
 - ``none``: 外部呼び出しをせず空の結果を返す（開発・テスト用）。
 
@@ -18,6 +21,7 @@ import time
 from typing import Any
 
 from app.core.config import Settings, get_settings
+from app.services import card_parser
 
 logger = logging.getLogger(__name__)
 
@@ -73,23 +77,22 @@ OCR_RESPONSE_SCHEMA: dict[str, Any] = {
     "required": ["first_name", "last_name", "contact_methods"],
 }
 
-OCR_PROMPT = """この名刺画像から以下の情報を JSON 形式で抽出してください。
-フィールド:
-- first_name: 名（文字列）
-- last_name: 姓（文字列）
-- first_name_kana: 名のフリガナ（文字列 *予想でよい）
-- last_name_kana: 姓のフリガナ（文字列 *予想でよい）
-- company_name: 会社名（文字列 or null）
-- department: 部署名（文字列 or null）
-- position: 役職（文字列 or null）
-- memo: その他の情報（contact_methodsのどれにも当てはまらない詳細 文字列 or null）
-- contact_methods: 連絡先の配列。各要素は {type, value, is_primary} 。
-  type は email, tel, mobile, fax, website, x, instagram, youtube, discord, booth, github,
-  linkedin, facebook, line, tiktok, address, other のいずれか。
-  is_primary は最初の連絡先のみ true。
+OCR_PROMPT = """この名刺画像から情報を JSON で抽出します。次の順で行ってください。
+1. 画像の文字を一字一句そのまま書き写す（transcript）
+2. transcript に実在する文字列だけを各項目に切り出す
 
-画像に書かれていない項目は null にし、推測で埋めないでください。
-文字は画像のとおりに写してください（異体字を常用漢字に置き換えない）。
+項目: transcript, last_name, first_name, last_name_kana, first_name_kana,
+company_name, department, position, memo, contact_methods({type, value, is_primary})
+
+禁止事項（重要）:
+- 画像に無い住所・社名・電話番号・メール・フリガナを作らない
+- 読めない漢字を別の漢字に置き換えない（読めない項目は null）
+- フリガナは画像に明記されている場合のみ入れる。推測しない
+- 縦書きの場合は行ごとに読み、列の順に並べる
+
+contact_methods の type は email, tel, mobile, fax, website, x, instagram, youtube,
+discord, booth, github, linkedin, facebook, line, tiktok, address, other のいずれか。
+is_primary は先頭の 1 件のみ true。
 JSON のみを返してください。マークダウンコードブロックは不要です。"""
 
 _NULLABLE_FIELDS = (
@@ -359,11 +362,71 @@ def _ocr_gemini(image_bytes: bytes, settings: Settings) -> dict[str, Any]:
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  プロバイダ: 自前の NDLOCR-Lite サービス
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+def _ocr_ndl(image_bytes: bytes, settings: Settings) -> dict[str, Any]:
+    """名刺画像を ``ocr-service`` に送り、返ってきた行を項目に切り出す。
+
+    LLM を使わないため、画像に無い住所や氏名が生成されることはない。
+    """
+    import httpx
+
+    if not settings.ocr_service_url:
+        msg = "OCR_SERVICE_URL が設定されていません"
+        raise OcrError(msg)
+
+    image_format = detect_image_format(image_bytes)
+    url = f"{settings.ocr_service_url.rstrip('/')}/ocr"
+    files = {"file": (f"card.{image_format}", image_bytes, f"image/{image_format}")}
+
+    try:
+        with httpx.Client(timeout=settings.ocr_timeout_seconds) as client:
+            response = client.post(url, files=files)
+    except httpx.TimeoutException as exc:
+        msg = f"OCR サービスがタイムアウトしました（{settings.ocr_timeout_seconds}秒）"
+        raise OcrError(msg) from exc
+    except httpx.HTTPError as exc:
+        msg = f"OCR サービスへ接続できません: {exc}"
+        raise OcrError(msg) from exc
+
+    if response.status_code != httpx.codes.OK:
+        detail = ""
+        try:
+            detail = str(response.json().get("detail", ""))
+        except ValueError:
+            detail = response.text[:200]
+        msg = f"OCR サービスが {response.status_code} を返しました: {detail}"
+        raise OcrError(msg)
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        msg = "OCR サービスの応答を JSON として解釈できません"
+        raise OcrError(msg) from exc
+
+    lines = [str(line.get("text", "")) for line in payload.get("lines", [])]
+    raw_text = str(payload.get("text", ""))
+    if not any(line.strip() for line in lines) and not raw_text.strip():
+        logger.info("ndl ocr returned no text (elapsed_ms=%s)", payload.get("elapsed_ms"))
+        return empty_result()
+
+    logger.info(
+        "ndl ocr done lines=%d elapsed_ms=%s",
+        len(lines),
+        payload.get("elapsed_ms"),
+    )
+    return card_parser.parse_card_text(lines, raw_text)
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  入口
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 _PROVIDERS = {
     "bedrock": _ocr_bedrock,
+    "ndl": _ocr_ndl,
     "gemini": _ocr_gemini,
 }
 
@@ -384,7 +447,7 @@ def extract_business_card(
 
     handler = _PROVIDERS.get(provider)
     if handler is None:
-        msg = f"未知の OCR_PROVIDER です: {provider}（bedrock / gemini / none）"
+        msg = f"未知の OCR_PROVIDER です: {provider}（ndl / bedrock / gemini / none）"
         raise OcrError(msg)
 
     raw = handler(image_bytes, settings)

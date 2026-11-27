@@ -54,10 +54,14 @@ class Settings(BaseSettings):
     ocr_provider: str = Field(
         default="gemini",
         description=(
-            "OCR プロバイダ ('bedrock' / 'gemini' / 'none')。"
-            "既定は従来の挙動（gemini）を保つ。Bedrock へ移行するときは "
-            "OCR_PROVIDER=bedrock を明示する"
+            "OCR プロバイダ ('ndl' / 'bedrock' / 'gemini' / 'none')。"
+            "'ndl' は自前の ocr-service（NDLOCR-Lite）を OCR_SERVICE_URL に呼ぶ。"
+            "既定は従来の挙動（gemini）を保つ"
         ),
+    )
+    ocr_service_url: str = Field(
+        default="http://ocr:8100",
+        description="NDLOCR-Lite OCR サービスの URL（OCR_PROVIDER=ndl のとき使う）",
     )
     ocr_timeout_seconds: int = Field(
         default=30,
