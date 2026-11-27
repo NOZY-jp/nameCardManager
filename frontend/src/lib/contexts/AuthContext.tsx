@@ -11,9 +11,9 @@ import {
 import { apiClient } from "@/lib/api/client";
 
 export interface User {
-  id: string;
+  id: number;
   email: string;
-  name: string;
+  created_at: string;
 }
 
 export interface AuthContextValue {
@@ -35,25 +35,35 @@ export function AuthProvider({
   initialUser = null,
 }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(initialUser ?? null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(initialUser === null);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    if (token && !initialUser) {
-      setIsLoading(true);
-      apiClient
-        .get("/auth/me")
-        .then((response) => {
-          setUser(response.data);
-        })
-        .catch(() => {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+    if (initialUser) {
+      setIsLoading(false);
+      return;
     }
+
+    if (!token) {
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    apiClient
+      .get<User>("/auth/me")
+      .then((response) => {
+        setUser(response.data);
+      })
+      .catch(() => {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        setUser(null);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [initialUser]);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -63,14 +73,20 @@ export function AuthProvider({
         email,
         password,
       });
-      const { access_token, refresh_token, user: userData } = response.data;
+      const { access_token, refresh_token } = response.data;
 
       localStorage.setItem("access_token", access_token);
       if (refresh_token) {
         localStorage.setItem("refresh_token", refresh_token);
       }
 
-      setUser(userData);
+      const meResponse = await apiClient.get<User>("/auth/me");
+      setUser(meResponse.data);
+    } catch (error) {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      setUser(null);
+      throw error;
     } finally {
       setIsLoading(false);
     }

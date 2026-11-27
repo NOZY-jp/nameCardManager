@@ -1,307 +1,247 @@
 # データベーススキーマ定義
 
-> ソース: `backend/app/models/__init__.py`
-> 改訂日: 2026-02-28 — Relationship の M:N 化 / met_notes（フリー入力）追加 / met_at・met_context・company_name 等の削除
+> 正本: `backend/app/models/__init__.py`、`backend/alembic/versions/`、および本番 DB のカタログ実測（2026-11-27）
+> PostgreSQL 16.13 / pg_bigm 1.2 / マイグレーション head `1cfddae12df2`
+
+## 概要
+
+| 項目 | 値 |
+| --- | --- |
+| DB | PostgreSQL 16（`pg_bigm` 拡張で日本語部分一致検索） |
+| テーブル数 | 8（＋ Alembic 管理用 `alembic_version`） |
+| ユーザー分離 | `users` を頂点に、`name_cards` / `relationships` / `tags` が `user_id` で従属 |
+| 削除の連鎖 | DB の `ON DELETE CASCADE` は `name_card_images` のみ。他は ORM（SQLAlchemy）の cascade に依存 |
+| スキーマ変更 | Alembic。TS 実装へ移行する際もこの DDL を正とする |
 
 ## 概念定義
 
 | 概念 | 意味 | 例 |
-|---|---|---|
-| **Relationship** | 組織情報の階層構造 | `建築士会/桑名支部/青年会長`, `Jasca/三重/理事` |
-| **Tag** | フラットな分類ラベル | `ゴルフ仲間`, `友人`, `取引先`, `重要` |
-| **ContactMethod** | 連絡先情報 | `email`, `phone`, `fax`, `mobile`, `website` |
-| **met_notes** | どこで出会ったか（フリー入力） | `2025年展示会で出会った`, `建築士会定例会`, `友人の紹介` |
+| --- | --- | --- |
+| **Relationship** | 組織の階層構造（自己参照ツリー、ユーザーごと） | `建築士会/桑名支部/青年会長` |
+| **Tag** | フラットな分類ラベル | `ゴルフ仲間`、`友人`、`取引先`、`重要` |
+| **ContactMethod** | 連絡先（1名刺に複数、種別＋値＋主系フラグ） | `email`、`tel`、`mobile`、`website` |
+| **met_notes** | どこで出会ったか（フリー入力） | `2025年展示会`, `友人の紹介` |
+| **memo** | 自由メモ（旧 `notes`。`a70d42ed3c54` でリネーム） | — |
 
-### Relationship と Tag の使い分け
+### Relationship と Tag の違い
 
-- **Relationship**: 入れ子構造（ツリー）で組織の所属を表現。兼務の場合、1人が複数の Relationship に紐付く（M:N）
-- **Tag**: 横断的な分類。フラットなラベル付け。構造を持たない
+- **Relationship**: 入れ子（ツリー）で所属を表現。兼務は1人が複数に紐付く（M:N）。`get_full_path()` が祖先をたどって `建築士会/桑名支部/青年会長` を組み立てる。
+- **Tag**: 構造を持たない横断分類。名刺とは M:N。
 
-### company_name / department / position が NameCard に不要な理由
+### company_name / department / position の扱い
 
-Relationship の階層ノードがそれらを包含する:
+`a70d42ed3c54` で `name_cards` に追加され、**現在も存在する**（`String(200)`、NULL 可）。旧版の本ドキュメントには「Relationship が包含するため不要」とあったが、実装は両方を保持している。OCR 結果の一時保存先として使い、Relationship とは独立に編集できる。TS 移行時もこの二重管理をそのまま引き継ぐか、どちらかへ寄せるかを決める必要がある（`docs/plans/nextjs-fullstack-rebuild.md` の未決事項）。
 
-```
-建築士会（ルート）
-├── 桑名支部（中間）
-│   └── 青年会長（リーフ） ← NameCard はここに紐付く
-└── 鈴鹿支部（中間）
-    └── 部長（リーフ）
-```
-
-名刺一覧で「所属」を表示するには、紐付いた Relationship の `full_path`（祖先を含むパス）を取得する。
-
-## ER図
+## ER 図
 
 ```mermaid
 erDiagram
-    users ||--o{ name_cards : "has"
-    users ||--o{ relationships : "has"
-    users ||--o{ tags : "has"
-    relationships ||--o{ relationships : "parent-child"
-    name_cards }o--o{ relationships : "belongs to (M:N)"
-    name_cards }o--o{ tags : "tagged (M:N)"
-    name_cards ||--o{ contact_methods : "has"
-    name_card_relationships }|--|| name_cards : "FK"
-    name_card_relationships }|--|| relationships : "FK"
-    name_card_tags }|--|| name_cards : "FK"
-    name_card_tags }|--|| tags : "FK"
+    users ||--o{ name_cards : "所有"
+    users ||--o{ relationships : "所有"
+    users ||--o{ tags : "所有"
+    name_cards ||--o{ contact_methods : "連絡先"
+    name_cards ||--o{ name_card_images : "画像"
+    name_cards ||--o{ name_card_tags : ""
+    tags ||--o{ name_card_tags : ""
+    name_cards ||--o{ name_card_relationships : ""
+    relationships ||--o{ name_card_relationships : ""
+    relationships ||--o{ relationships : "parent_id"
 
     users {
-        int id PK "AUTO INCREMENT"
-        varchar(255) email UK "NOT NULL"
-        varchar(255) password_hash "NOT NULL"
-        timestamptz created_at "DEFAULT now()"
-        timestamptz updated_at "DEFAULT now(), ON UPDATE now()"
+        int id PK
+        varchar email UK
+        varchar password_hash
+        timestamptz created_at
+        timestamptz updated_at
     }
-
-    relationships {
-        int id PK "AUTO INCREMENT"
-        int user_id FK "NOT NULL -> users.id"
-        int parent_id FK "NULLABLE -> relationships.id"
-        varchar(100) name "NOT NULL"
-    }
-
     name_cards {
-        int id PK "AUTO INCREMENT"
-        int user_id FK "NOT NULL -> users.id"
-        varchar(100) first_name "NOT NULL"
-        varchar(100) last_name "NOT NULL"
-        varchar(100) first_name_kana "NULLABLE"
-        varchar(100) last_name_kana "NULLABLE"
-        varchar(500) image_path "NULLABLE"
-        text met_notes "NULLABLE"
-        text notes "NULLABLE"
-        timestamptz created_at "DEFAULT now()"
-        timestamptz updated_at "DEFAULT now(), ON UPDATE now()"
+        int id PK
+        int user_id FK
+        varchar last_name
+        varchar first_name
+        varchar last_name_kana "NULL可"
+        varchar first_name_kana "NULL可"
+        varchar company_name "NULL可"
+        varchar department "NULL可"
+        varchar position "NULL可"
+        text met_notes "NULL可"
+        text memo "NULL可"
+        timestamptz created_at
+        timestamptz updated_at
     }
-
-    name_card_relationships {
-        int name_card_id PK_FK "-> name_cards.id"
-        int relationship_id PK_FK "-> relationships.id"
-    }
-
-    tags {
-        int id PK "AUTO INCREMENT"
-        int user_id FK "NOT NULL -> users.id"
-        varchar(100) name "NOT NULL"
-    }
-
-    name_card_tags {
-        int name_card_id PK_FK "-> name_cards.id"
-        int tag_id PK_FK "-> tags.id"
-    }
-
     contact_methods {
-        int id PK "AUTO INCREMENT"
-        int name_card_id FK "NOT NULL -> name_cards.id"
-        varchar(20) type "NOT NULL"
-        varchar(50) label "NOT NULL"
-        varchar(255) value "NOT NULL"
-        boolean is_primary "DEFAULT false"
+        int id PK
+        int name_card_id FK
+        varchar type
+        varchar value
+        boolean is_primary
+    }
+    name_card_images {
+        int id PK
+        int name_card_id FK
+        varchar image_path
+        int position
+        timestamptz created_at
+    }
+    tags {
+        int id PK
+        int user_id FK
+        varchar name
+    }
+    relationships {
+        int id PK
+        int user_id FK
+        int parent_id FK "自己参照"
+        varchar name
     }
 ```
 
 ## テーブル定義
 
-### `users` - ユーザー
+### users
 
-| カラム | 型 | 制約 | 説明 |
-|---|---|---|---|
-| `id` | `INTEGER` | `PRIMARY KEY`, `AUTO INCREMENT` | ユーザーID |
-| `email` | `VARCHAR(255)` | `NOT NULL`, `UNIQUE` | メールアドレス（ログインID） |
-| `password_hash` | `VARCHAR(255)` | `NOT NULL` | パスワードハッシュ |
-| `created_at` | `TIMESTAMP WITH TIME ZONE` | `DEFAULT now()` | 作成日時 |
-| `updated_at` | `TIMESTAMP WITH TIME ZONE` | `DEFAULT now()`, `ON UPDATE now()` | 更新日時 |
+| カラム | 型 | NULL | 既定値 | 備考 |
+| --- | --- | --- | --- | --- |
+| `id` | serial | NO | 連番 | PK |
+| `email` | varchar(255) | NO | — | UNIQUE（`users_email_key`） |
+| `password_hash` | varchar(255) | NO | — | ハッシュ化済みパスワード |
+| `created_at` | timestamptz | NO | `now()` | |
+| `updated_at` | timestamptz | NO | `now()` | 更新はアプリ側（`onupdate`）で行う |
 
-**リレーション:**
+### name_cards
 
-- `name_cards`: 1対多（`cascade: all, delete-orphan`）
-- `relationships`: 1対多（`cascade: all, delete-orphan`）
-- `tags`: 1対多（`cascade: all, delete-orphan`）
+| カラム | 型 | NULL | 既定値 | 備考 |
+| --- | --- | --- | --- | --- |
+| `id` | serial | NO | 連番 | PK |
+| `user_id` | integer | NO | — | FK → `users.id`（ON DELETE 指定なし） |
+| `last_name` | varchar(100) | NO | — | |
+| `first_name` | varchar(100) | NO | — | |
+| `last_name_kana` | varchar(100) | YES | — | 検索時にひらがな/カタカナ両対応 |
+| `first_name_kana` | varchar(100) | YES | — | 同上 |
+| `company_name` | varchar(200) | YES | — | |
+| `department` | varchar(200) | YES | — | |
+| `position` | varchar(200) | YES | — | |
+| `met_notes` | text | YES | — | どこで出会ったか |
+| `memo` | text | YES | — | 旧 `notes` |
+| `created_at` | timestamptz | NO | `now()` | |
+| `updated_at` | timestamptz | NO | `now()` | 更新はアプリ側 |
 
----
+### contact_methods
 
-### `relationships` - 組織情報の階層構造
+| カラム | 型 | NULL | 既定値 | 備考 |
+| --- | --- | --- | --- | --- |
+| `id` | serial | NO | 連番 | PK |
+| `name_card_id` | integer | NO | — | FK → `name_cards.id` |
+| `type` | varchar(20) | NO | — | アプリ側で列挙を制限（`email`/`tel`/`mobile`/`fax`/`website`/`line`/`x` など） |
+| `value` | varchar(255) | NO | — | |
+| `is_primary` | boolean | NO | DB 既定なし（アプリで `False`） | 主系フラグ |
 
-組織の階層を入れ子で表現する。`parent_id` による自己参照でツリー構造を実現。
+### name_card_images
 
-| カラム | 型 | 制約 | 説明 |
-|---|---|---|---|
-| `id` | `INTEGER` | `PRIMARY KEY`, `AUTO INCREMENT` | 関係性ID |
-| `user_id` | `INTEGER` | `NOT NULL`, `FK → users.id` | 所有ユーザー |
-| `parent_id` | `INTEGER` | `NULLABLE`, `FK → relationships.id` | 親ノード（`NULL` = ルート） |
-| `name` | `VARCHAR(100)` | `NOT NULL` | ノード名（例: "建築士会", "桑名支部", "青年会長"） |
+| カラム | 型 | NULL | 既定値 | 備考 |
+| --- | --- | --- | --- | --- |
+| `id` | serial | NO | 連番 | PK |
+| `name_card_id` | integer | NO | — | FK → `name_cards.id` **ON DELETE CASCADE** |
+| `image_path` | varchar(500) | NO | — | サーバー上のファイルパス |
+| `position` | integer | NO | アプリで 0 | 複数画像の並び順 |
+| `created_at` | timestamptz | NO | `now()` | |
 
-**リレーション:**
+`1cfddae12df2` で作成。同時に `name_cards.image_path`（旧・単一画像）を削除し、複数画像へ移行。
 
-- `user`: 多対1 → `users`
-- `parent`: 多対1 → `relationships`（自己参照）
-- `children`: 1対多 → `relationships`（自己参照の逆方向）
-- `name_cards`: 多対多 → `name_cards`（中間テーブル `name_card_relationships` 経由）
+### tags / relationships
 
-**ツリー構造の例:**
+| テーブル | カラム | 型 | NULL | 備考 |
+| --- | --- | --- | --- | --- |
+| `tags` | `id` | serial | NO | PK |
+| | `user_id` | integer | NO | FK → `users.id` |
+| | `name` | varchar(100) | NO | **一意制約なし**（同名タグを作れてしまう） |
+| `relationships` | `id` | serial | NO | PK |
+| | `user_id` | integer | NO | FK → `users.id` |
+| | `parent_id` | integer | YES | FK → `relationships.id`（自己参照、ON DELETE 指定なし） |
+| | `name` | varchar(100) | NO | 一意制約なし |
 
-```
-建築士会（parent_id=NULL）
-├── 桑名支部（parent_id=建築士会.id）
-│   └── 青年会長（parent_id=桑名支部.id）
-└── 鈴鹿支部（parent_id=建築士会.id）
-    └── 部長（parent_id=鈴鹿支部.id）
-Jasca（parent_id=NULL）
-└── 三重（parent_id=Jasca.id）
-    └── 理事（parent_id=三重.id）
-```
+### 中間テーブル
 
-**full_path の取得:** `get_ancestors()` 再帰 CTE で祖先を遡り、`"建築士会/桑名支部/青年会長"` のようなパスを構築する。
+| テーブル | 主キー | FK |
+| --- | --- | --- |
+| `name_card_tags` | (`name_card_id`, `tag_id`) | それぞれ `name_cards.id` / `tags.id` |
+| `name_card_relationships` | (`name_card_id`, `relationship_id`) | それぞれ `name_cards.id` / `relationships.id` |
 
----
+## 索引（本番実測）
 
-### `name_cards` - 名刺
+| 索引 | テーブル | 種別 | 対象 |
+| --- | --- | --- | --- |
+| `users_pkey` / `users_email_key` | users | btree | `id` / `email`(UNIQUE) |
+| `name_cards_pkey` | name_cards | btree | `id` |
+| `ix_name_cards_last_name_bigm` | name_cards | GIN (pg_bigm) | `last_name` |
+| `ix_name_cards_first_name_bigm` | name_cards | GIN (pg_bigm) | `first_name` |
+| `ix_name_cards_last_name_kana_bigm` | name_cards | GIN (pg_bigm) | `last_name_kana` |
+| `ix_name_cards_first_name_kana_bigm` | name_cards | GIN (pg_bigm) | `first_name_kana` |
+| `ix_name_cards_met_notes_bigm` | name_cards | GIN (pg_bigm) | `met_notes` |
+| `ix_name_cards_notes_bigm` | name_cards | GIN (pg_bigm) | `memo`（旧 `notes`。索引名は作成時のまま） |
+| `contact_methods_pkey` | contact_methods | btree | `id` |
+| `name_card_images_pkey` | name_card_images | btree | `id` |
+| `tags_pkey` / `relationships_pkey` | — | btree | `id` |
+| `alembic_version_pkc` | alembic_version | btree | `version_num` |
 
-| カラム | 型 | 制約 | 説明 |
-|---|---|---|---|
-| `id` | `INTEGER` | `PRIMARY KEY`, `AUTO INCREMENT` | 名刺ID |
-| `user_id` | `INTEGER` | `NOT NULL`, `FK → users.id` | 所有ユーザー |
-| `first_name` | `VARCHAR(100)` | `NOT NULL` | 名 |
-| `last_name` | `VARCHAR(100)` | `NOT NULL` | 姓 |
-| `first_name_kana` | `VARCHAR(100)` | `NULLABLE` | 名（カナ） |
-| `last_name_kana` | `VARCHAR(100)` | `NULLABLE` | 姓（カナ） |
-| `image_path` | `VARCHAR(500)` | `NULLABLE` | 名刺画像パス |
-| `met_notes` | `TEXT` | `NULLABLE` | どこで出会ったか（フリー入力） |
-| `notes` | `TEXT` | `NULLABLE` | 備考 |
-| `created_at` | `TIMESTAMP WITH TIME ZONE` | `DEFAULT now()` | 作成日時 |
-| `updated_at` | `TIMESTAMP WITH TIME ZONE` | `DEFAULT now()`, `ON UPDATE now()` | 更新日時 |
+### 索引の不足（TS 移行時に追加する）
 
-**削除されたカラム（旧モデルから）:**
+外部キーに索引が無く、子テーブルからの引き当てが全走査になる。
 
-| 旧カラム | 移行先 | 理由 |
-|---|---|---|
-| `email` | `contact_methods` テーブル | 複数メール対応 |
-| `phone` | `contact_methods` テーブル | 複数電話番号対応 |
-| `relationship_id` (FK) | `name_card_relationships` 中間テーブル | M:N 対応（兼務） |
-| `company_name` | 不要 | Relationship の階層で表現 |
-| `department` | 不要 | Relationship の階層で表現 |
-| `position` | 不要 | Relationship の階層で表現 |
-| `met_at` | 不要 | `met_notes` のフリー入力に統合 |
-| `met_context` | 不要 | `met_notes` のフリー入力に統合 |
+- `name_cards(user_id)`、`contact_methods(name_card_id)`、`name_card_images(name_card_id)`
+- `name_card_tags(tag_id)`、`name_card_relationships(relationship_id)`
+- `relationships(user_id, parent_id)`、`tags(user_id)`
 
-**リレーション:**
+## 検索の実装と制約
 
-- `user`: 多対1 → `users`
-- `relationships`: 多対多 → `relationships`（中間テーブル `name_card_relationships` 経由）
-- `tags`: 多対多 → `tags`（中間テーブル `name_card_tags` 経由）
-- `contact_methods`: 1対多 → `contact_methods`
+`GET /api/v1/search` は次の条件を OR で結合する。
 
----
+1. `name_cards` の `first_name` / `last_name` / `*_kana` / `memo` / `met_notes` に対する `ILIKE '%kw%'`
+2. 名刺に紐づく Relationship と**その全祖先**の `name`（再帰 CTE で展開）に対する `ILIKE`
+3. `contact_methods.value` に対する `ILIKE`
+4. ひらがな・カタカナ相互変換したキーワードでも検索（`_normalize_kana`）
 
-### `name_card_relationships` - 中間テーブル（名刺 ↔ 組織）
+フィルタ: `tag_ids`、`relationship_ids`、`created_at` / `updated_at` の範囲、ページング、ソート（`created_at` / `updated_at` / 氏名など）。
 
-名刺と組織（Relationship）の多対多を実現する。兼務の表現に使用。
+**計測結果（2026-11-27）**: `EXPLAIN` で `last_name ILIKE '%abc%'` を実行すると、`enable_seqscan=off` でも `Seq Scan` のままで GIN 索引は使われない。pg_bigm 1.2 の GIN 索引を `LIKE` で使うには `pg_bigm.gin_key_like=on` が必要だが、このサーバーでは当該パラメータが未登録（`LOAD 'pg_bigm'` 後も `unrecognized configuration parameter`）。現状の日本語検索は全走査で、`ix_*_bigm` は実質未使用。TS 移行時は (a) `pg_bigm.gin_key_like` を有効化できる版へ揃える、(b) `=%` 演算子を使う、(c) 別方式（`pg_trgm` + `gin_trgm_ops`、`textsearch_ja` など）へ替える、のいずれかを選ぶ。
 
-| カラム | 型 | 制約 | 説明 |
-|---|---|---|---|
-| `name_card_id` | `INTEGER` | `PRIMARY KEY`, `FK → name_cards.id` | 名刺ID |
-| `relationship_id` | `INTEGER` | `PRIMARY KEY`, `FK → relationships.id` | 組織ノードID |
+## データ量（2026-11-27 本番）
 
-複合主キー: `(name_card_id, relationship_id)`
+| テーブル | 行数 |
+| --- | --- |
+| users | 4 |
+| name_cards | 49 |
+| contact_methods | 211 |
+| name_card_images | 75 |
+| relationships | 7 |
+| tags | 0 |
+| name_card_tags | 0 |
 
-**使用例:**
+小規模のため、移行はダンプ＋検証で十分に間に合う。
 
-田中太郎さんが兼務している場合:
+## 削除時の挙動
 
-| name_card_id | relationship_id | 解決されるパス |
-|---|---|---|
-| 1 (田中太郎) | 5 (青年会長) | 建築士会/桑名支部/青年会長 |
-| 1 (田中太郎) | 8 (理事) | Jasca/三重/理事 |
+| 操作 | DB | ORM（現行 FastAPI） |
+| --- | --- | --- |
+| 名刺削除 | `name_card_images` は CASCADE。`contact_methods` / 中間テーブルは**残る** | `contact_methods` と `images` を cascade delete。中間テーブルの行は SQLAlchemy が削除 |
+| ユーザー削除 | 参照が残るため**エラー** | `name_cards` / `relationships` / `tags` を cascade delete |
+| タグ・Relationship 削除 | 中間テーブルの行は残る | 関連の解除はアプリ側で実施 |
 
----
+TS 実装では DB 側に `ON DELETE` を明示するか、削除をトランザクションで明示的に行うかを決める必要がある（現状はアプリ依存で、生 SQL で消すと孤児行が出る）。
 
-### `tags` - タグ（フラット分類ラベル）
+## 既知の不整合
 
-| カラム | 型 | 制約 | 説明 |
-|---|---|---|---|
-| `id` | `INTEGER` | `PRIMARY KEY`, `AUTO INCREMENT` | タグID |
-| `user_id` | `INTEGER` | `NOT NULL`, `FK → users.id` | 所有ユーザー |
-| `name` | `VARCHAR(100)` | `NOT NULL` | タグ名（例: "ゴルフ仲間", "友人", "取引先", "重要"） |
+| 内容 | 詳細 |
+| --- | --- |
+| 古い記述 | 旧版ドキュメントは「`company_name` 等は不要」としていたが、実際は存在する |
+| 索引名 | `ix_name_cards_notes_bigm` は `memo` を対象にしている（リネームに追随していない） |
+| API の不整合 | `backend/app/api/v1/endpoints/search.py` が削除済みカラム `nc.image_path` を参照しており、`GET /search` は 500 になる可能性が高い（実行時確認は未実施） |
+| 一意制約 | `tags(user_id, name)`、`relationships(user_id, parent_id, name)` に一意制約が無く重複を作れる |
+| `updated_at` | DB トリガーではなくアプリの `onupdate`。TS 実装でも同様に扱うか、トリガーへ寄せるか決める |
 
-**リレーション:**
+## 移行（Next.js + TS 化）での前提
 
-- `user`: 多対1 → `users`
-- `name_cards`: 多対多 → `name_cards`（中間テーブル `name_card_tags` 経由）
-
----
-
-### `name_card_tags` - 中間テーブル（名刺 ↔ タグ）
-
-| カラム | 型 | 制約 | 説明 |
-|---|---|---|---|
-| `name_card_id` | `INTEGER` | `PRIMARY KEY`, `FK → name_cards.id` | 名刺ID |
-| `tag_id` | `INTEGER` | `PRIMARY KEY`, `FK → tags.id` | タグID |
-
-複合主キー: `(name_card_id, tag_id)`
-
----
-
-### `contact_methods` - 連絡先
-
-| カラム | 型 | 制約 | 説明 |
-|---|---|---|---|
-| `id` | `INTEGER` | `PRIMARY KEY`, `AUTO INCREMENT` | 連絡先ID |
-| `name_card_id` | `INTEGER` | `NOT NULL`, `FK → name_cards.id` | 名刺ID |
-| `type` | `VARCHAR(20)` | `NOT NULL` | 種別: `email`, `phone`, `fax`, `mobile`, `website`, `twitter`, `github` 等 |
-| `label` | `VARCHAR(50)` | `NOT NULL` | ラベル: `"仕事"`, `"自宅"`, `"携帯"` 等 |
-| `value` | `VARCHAR(255)` | `NOT NULL` | 値 |
-| `is_primary` | `BOOLEAN` | `DEFAULT false` | 同一 type 内の主要連絡先 |
-
-**リレーション:**
-
-- `name_card`: 多対1 → `name_cards`
-
----
-
-## 外部キー制約一覧
-
-| テーブル | カラム | 参照先 | 備考 |
-|---|---|---|---|
-| `relationships` | `user_id` | `users.id` | |
-| `relationships` | `parent_id` | `relationships.id` | 自己参照、NULLABLE |
-| `name_cards` | `user_id` | `users.id` | |
-| `name_card_relationships` | `name_card_id` | `name_cards.id` | 複合PKの一部 |
-| `name_card_relationships` | `relationship_id` | `relationships.id` | 複合PKの一部 |
-| `name_card_tags` | `name_card_id` | `name_cards.id` | 複合PKの一部 |
-| `name_card_tags` | `tag_id` | `tags.id` | 複合PKの一部 |
-| `tags` | `user_id` | `users.id` | |
-| `contact_methods` | `name_card_id` | `name_cards.id` | |
-
-## カスケード動作
-
-| 親テーブル | 子テーブル | SQLAlchemy cascade |
-|---|---|---|
-| `users` | `name_cards` | `all, delete-orphan` |
-| `users` | `relationships` | `all, delete-orphan` |
-| `users` | `tags` | `all, delete-orphan` |
-| `name_cards` | `contact_methods` | `all, delete-orphan` |
-
-ユーザーを削除すると、そのユーザーに紐づく名刺・関係性・タグがすべて自動削除される。
-名刺を削除すると、その名刺に紐づく連絡先がすべて自動削除される。
-
-## インデックス
-
-SQLAlchemy が自動生成するインデックス:
-
-| テーブル | カラム | 種類 | 備考 |
-|---|---|---|---|
-| `users` | `id` | PRIMARY KEY | 自動 |
-| `users` | `email` | UNIQUE INDEX | `unique=True` 指定 |
-| `relationships` | `id` | PRIMARY KEY | 自動 |
-| `relationships` | `user_id` | INDEX | FK から自動生成 |
-| `relationships` | `parent_id` | INDEX | FK から自動生成 |
-| `name_cards` | `id` | PRIMARY KEY | 自動 |
-| `name_cards` | `user_id` | INDEX | FK から自動生成 |
-| `name_card_relationships` | `(name_card_id, relationship_id)` | PRIMARY KEY (複合) | 自動 |
-| `tags` | `id` | PRIMARY KEY | 自動 |
-| `tags` | `user_id` | INDEX | FK から自動生成 |
-| `name_card_tags` | `(name_card_id, tag_id)` | PRIMARY KEY (複合) | 自動 |
-| `contact_methods` | `id` | PRIMARY KEY | 自動 |
-| `contact_methods` | `name_card_id` | INDEX | FK から自動生成 |
+- テーブル定義と ID をそのまま維持し、既存データを保持したまま置き換える（新規 DB へ作り直す場合は CSV エクスポート経由）。
+- `pg_bigm` 拡張と GIN 索引は raw SQL マイグレーションで再現する。
+- 命名は snake_case のまま維持し、TS 側の型はそこから生成する（Drizzle / Prisma いずれでも可）。
+- 詳細な方針は `docs/plans/nextjs-fullstack-rebuild.md`。

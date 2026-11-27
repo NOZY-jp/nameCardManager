@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { imageApi, type ProcessImageResponse } from "@/lib/api/images";
 import {
   CONTACT_METHOD_TYPES,
@@ -68,6 +68,15 @@ export function CameraOCRFlow({ onComplete, onCancel }: CameraOCRFlowProps) {
   const [error, setError] = useState<string | null>(null);
   const backgroundOcrRef = useRef<Promise<ProcessImageResponse> | null>(null);
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
   const startBackgroundOcr = useCallback(
     (imageData: string, rect: GuideRect | null) => {
       const ocrPromise = (async () => {
@@ -76,7 +85,11 @@ export function CameraOCRFlow({ onComplete, onCancel }: CameraOCRFlowProps) {
         const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
         const { upload_id } = await imageApi.upload(file);
         const { width, height } = await getImageNaturalSize(imageData);
-        const defaultCorners = getDefaultCornersFromGuideRect(rect, width, height);
+        const defaultCorners = getDefaultCornersFromGuideRect(
+          rect,
+          width,
+          height,
+        );
         return imageApi.process({ upload_id, corners: defaultCorners });
       })();
       backgroundOcrRef.current = ocrPromise;
@@ -143,9 +156,7 @@ export function CameraOCRFlow({ onComplete, onCancel }: CameraOCRFlowProps) {
                 is_primary: false,
               };
             })
-            .filter(
-              (cm): cm is NonNullable<typeof cm> => cm !== null,
-            ),
+            .filter((cm): cm is NonNullable<typeof cm> => cm !== null),
         };
 
         onComplete(formData);

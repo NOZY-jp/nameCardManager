@@ -1,0 +1,1 @@
+"""NDLOCR-Lite OCR サービス。"""

@@ -58,21 +58,20 @@ describe("RelationshipTree", () => {
       <RelationshipTree tree={sampleRelationshipTree} onAdd={onAdd} />,
     );
 
-    const addButton = screen.getByRole("button", { name: /追加/ });
+    const addButton = screen.getByRole("button", { name: "追加" });
     await userEvent.click(addButton);
 
     const nameInput = screen.getByRole("textbox");
     await userEvent.type(nameInput, "新ノード");
 
-    const confirmButton = screen.getByRole("button", {
-      name: /確定|保存|追加/,
-    });
+    // フォーム展開後は同名の確定ボタンだけが存在する
+    const confirmButton = screen.getByRole("button", { name: "追加" });
     await userEvent.click(confirmButton);
 
     expect(onAdd).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "新ノード",
-        parent_id: expect.any(String),
+        parent_id: "root",
       }),
     );
   });

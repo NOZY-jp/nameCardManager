@@ -39,7 +39,7 @@ export default function LoginPage() {
     try {
       await login(data.email, data.password);
       toast({ type: "success", message: "ログインしました" });
-      router.push("/namecards");
+      router.replace("/namecards");
     } catch (err: unknown) {
       const message =
         err instanceof Error

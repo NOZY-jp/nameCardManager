@@ -1,17 +1,22 @@
 // ─── CornerSelector ───────────────────────────────────────
 
 .container {
+  position: fixed;
+  inset: 0;
+  z-index: $z-modal;
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 0;
   background-color: #000;
+  overflow: hidden;
 }
 
 .imageWrapper {
   position: relative;
   flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,11 +62,16 @@
 // ─── Actions ─────────────────────────────────────────────
 
 .actions {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: $space-3;
-  padding: $space-4 $space-6;
+  padding:
+    $space-4
+    max($space-6, env(safe-area-inset-right))
+    max($space-4, env(safe-area-inset-bottom))
+    max($space-6, env(safe-area-inset-left));
   background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.6));
 
   button {
@@ -76,6 +86,10 @@
 
 @media (max-width: $bp-sm) {
   .actions {
-    padding: $space-3 $space-4;
+    padding:
+      $space-3
+      max($space-4, env(safe-area-inset-right))
+      max($space-3, env(safe-area-inset-bottom))
+      max($space-4, env(safe-area-inset-left));
   }
 }

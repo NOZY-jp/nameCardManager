@@ -29,6 +29,7 @@ from app.api.v1.deps import AuthUser, DbSession
 from app.core.config import get_settings
 from app.models import NameCard, NameCardImage
 from app.schemas import NameCardImageResponse
+from app.services.ocr import OcrError, empty_result, extract_business_card
 
 logger = logging.getLogger(__name__)
 
@@ -78,99 +79,30 @@ class ProcessRequest(BaseModel):
         return v
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  OCR 処理（Gemini 2.5 Flash）
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ─── OCR ─────────────────────────────────────────────
+# 実装は app/services/ocr.py。プロバイダは OCR_PROVIDER で切り替える。
 
 
 def process_image_ocr(image_bytes: bytes) -> dict[str, Any]:
-    """Gemini 2.5 Flash で名刺画像を OCR し、NameCardCreate 互換の dict を返す。
+    """名刺画像を OCR し、NameCardCreate 互換の dict を返す。
 
+    プロバイダの選択と呼び出しは app.services.ocr が担う。
     テストでは unittest.mock.patch でこの関数をモックする。
+
+    OCR_STRICT_FAILURE=false（既定）では失敗時に空の結果を返す。
+    true にすると 503 を返し、空の名刺が保存されるのを防ぐ。
     """
     settings = get_settings()
-    api_key = settings.gemini_api_key
-
-    if not api_key:
-        # API キー未設定時はダミー結果を返す
-        return {
-            "first_name": "",
-            "last_name": "",
-            "first_name_kana": None,
-            "last_name_kana": None,
-            "company_name": None,
-            "department": None,
-            "position": None,
-            "memo": None,
-            "contact_methods": [],
-        }
-
     try:
-        from google import genai  # type: ignore[import-untyped]
-
-        client = genai.Client(api_key=api_key)
-
-        prompt = """この名刺画像から以下の情報を JSON 形式で抽出してください。
-        フィールド:
-        - first_name: 名（文字列）
-        - last_name: 姓（文字列）
-        - first_name_kana: 名のフリガナ（文字列 *予想でよい）
-        - last_name_kana: 姓のフリガナ（文字列 *予想でよい）
-        - company_name: 会社名（文字列 or null）
-        - department: 部署名（文字列 or null）
-        - position: 役職（文字列 or null）
-        - memo: その他の情報（contact_methodsのどれにも当てはまらない詳細 文字列 or null）
-        - contact_methods: 連絡先の配列。各要素は {type, value, is_primary} 。
-          type は email, tel, mobile, fax, website, x, instagram, youtube, discord, booth, github, linkedin, facebook, line, tiktok, address, other のいずれか。
-          is_primary は最初の連絡先のみ true。
-
-        JSON のみを返してください。マークダウンコードブロックは不要です。"""
-
-        import base64
-
-        image_data = base64.b64encode(image_bytes).decode("utf-8")
-
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[
-                {
-                    "parts": [
-                        {"text": prompt},
-                        {
-                            "inline_data": {
-                                "mime_type": "image/jpeg",
-                                "data": image_data,
-                            }
-                        },
-                    ]
-                }
-            ],
-        )
-
-        import json
-
-        text = response.text.strip()
-        # マークダウンコードブロック除去
-        if text.startswith("```"):
-            text = text.split("\n", 1)[1]
-            if text.endswith("```"):
-                text = text[: -len("```")]
-            text = text.strip()
-
-        return json.loads(text)
-    except Exception:
-        logger.exception("Gemini OCR failed")
-        return {
-            "first_name": "",
-            "last_name": "",
-            "first_name_kana": None,
-            "last_name_kana": None,
-            "company_name": None,
-            "department": None,
-            "position": None,
-            "memo": None,
-            "contact_methods": [],
-        }
+        return extract_business_card(image_bytes, settings)
+    except OcrError as exc:
+        logger.exception("OCR failed")
+        if settings.ocr_strict_failure:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="名刺の読み取りに失敗しました。時間をおいて再試行してください。",
+            ) from exc
+        return empty_result()
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

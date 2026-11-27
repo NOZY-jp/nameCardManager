@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { sampleNamecard } from "@/__tests__/utils/fixtures";
 import {
@@ -33,12 +33,14 @@ describe("NameCardEditDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /保存/ }));
 
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({
-        last_name: "田中",
-        first_name: "太郎",
-      }),
-    );
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          last_name: "田中",
+          first_name: "太郎",
+        }),
+      );
+    });
   });
 
   it("test_edit_dialog_cancel_closes", async () => {
@@ -49,7 +51,7 @@ describe("NameCardEditDialog", () => {
       <NameCardEditDialog {...defaultProps} onClose={onClose} />,
     );
 
-    await user.click(screen.getByRole("button", { name: /キャンセル/ }));
+    await user.keyboard("{Escape}");
 
     expect(onClose).toHaveBeenCalled();
   });

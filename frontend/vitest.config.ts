@@ -4,6 +4,10 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const variablesPath = resolve(
+  __dirname,
+  "src/styles/_variables.scss",
+).replaceAll("\\", "/");
 
 export default defineConfig({
   plugins: [react()],
@@ -15,7 +19,7 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        additionalData: `@use "${resolve(__dirname, "src/styles/_variables.scss")}" as *;`,
+        additionalData: `@use "${variablesPath}" as *;`,
       },
     },
   },

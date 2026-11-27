@@ -48,6 +48,9 @@ mongo_data/
 redis_data/
 *.log
 
+# --- Credentials ---
+secrets/
+
 # --- Environment Variables (Security) ---
 .env
 .env.*

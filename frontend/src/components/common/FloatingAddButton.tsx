@@ -1,8 +1,17 @@
-import Link from "next/link";
+"use client";
+
 import { Plus } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import styles from "./FloatingAddButton.module.scss";
 
 export function FloatingAddButton() {
+  const pathname = usePathname();
+
+  if (pathname === "/namecards/new" || pathname.startsWith("/namecards/new/")) {
+    return null;
+  }
+
   return (
     <Link
       href="/namecards/new"

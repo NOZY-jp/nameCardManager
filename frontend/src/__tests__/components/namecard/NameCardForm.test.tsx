@@ -42,7 +42,8 @@ describe("NameCardForm", () => {
   it("test_namecard_form_renders_optional_fields", () => {
     renderWithProviders(<NameCardForm />);
 
-    expect(screen.getByLabelText(/カナ/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/セイ/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/メイ/)).toBeInTheDocument();
     expect(screen.getByLabelText(/メモ/)).toBeInTheDocument();
   });
 

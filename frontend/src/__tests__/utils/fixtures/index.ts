@@ -14,19 +14,28 @@ export const sampleNamecard = {
   image_back_url: "/images/card-back.jpg",
   memo: "重要な取引先",
   contact_methods: [
-    { type: "email", value: "tanaka@example.com", label: "仕事" },
-    { type: "phone", value: "090-1234-5678", label: "携帯" },
-    { type: "address", value: "東京都千代田区丸の内1-1-1", label: "本社" },
+    { type: "email", value: "tanaka@example.com", is_primary: true },
+    { type: "mobile", value: "090-1234-5678", is_primary: false },
+    { type: "address", value: "東京都千代田区丸の内1-1-1", is_primary: false },
   ],
   tags: [
-    { id: "tag-001", name: "取引先" },
-    { id: "tag-002", name: "ゴルフ仲間" },
+    { id: "1", name: "取引先" },
+    { id: "2", name: "ゴルフ仲間" },
   ],
   relationships: [
     {
-      id: "rel-001",
+      id: "1",
       name: "建築士会",
       parent_id: null,
+      full_path: "建築士会",
+    },
+  ],
+  images: [
+    {
+      id: 1,
+      image_path: "sample/front.webp",
+      position: 0,
+      created_at: "2026-01-15T09:00:00Z",
     },
   ],
   created_at: "2026-01-15T09:00:00Z",
@@ -49,6 +58,7 @@ export const sampleNamecardMinimal = {
   contact_methods: [],
   tags: [],
   relationships: [],
+  images: [],
   created_at: "2026-02-01T10:00:00Z",
   updated_at: "2026-02-01T10:00:00Z",
 };
@@ -102,9 +112,9 @@ export const sampleTags = [
 // ─── Auth ────────────────────────────────────────────────
 
 export const sampleUser = {
-  id: "user-001",
+  id: 1,
   email: "test@example.com",
-  name: "テストユーザー",
+  created_at: "2026-01-01T00:00:00Z",
 };
 
 export const sampleAuthTokens = {

@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { sampleAuthTokens, sampleUser } from "@/__tests__/utils/fixtures";
@@ -13,6 +13,7 @@ function createWrapper(initialUser?: typeof sampleUser | null) {
 
 vi.mock("@/lib/api/client", () => ({
   apiClient: {
+    get: vi.fn(),
     post: vi.fn(),
   },
 }));
@@ -44,8 +45,9 @@ describe("useAuth", () => {
   it("saves token on login", async () => {
     const { apiClient } = await import("@/lib/api/client");
     vi.mocked(apiClient.post).mockResolvedValue({
-      data: { ...sampleAuthTokens, user: sampleUser },
+      data: sampleAuthTokens,
     });
+    vi.mocked(apiClient.get).mockResolvedValue({ data: sampleUser });
 
     const { result } = renderHook(() => useAuth(), {
       wrapper: createWrapper(null),
@@ -56,7 +58,22 @@ describe("useAuth", () => {
     });
 
     expect(localStorage.getItem("access_token")).toBeTruthy();
-    expect(result.current.user).toBeTruthy();
+    expect(result.current.user).toEqual(sampleUser);
+  });
+
+  it("restores the current user from a saved token", async () => {
+    const { apiClient } = await import("@/lib/api/client");
+    localStorage.setItem("access_token", sampleAuthTokens.access_token);
+    vi.mocked(apiClient.get).mockResolvedValue({ data: sampleUser });
+
+    const { result } = renderHook(() => useAuth(), {
+      wrapper: createWrapper(null),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.user).toEqual(sampleUser);
+    });
   });
 
   it("removes token on logout", async () => {
