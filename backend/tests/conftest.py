@@ -197,14 +197,12 @@ def sample_namecard(
     cm1 = ContactMethod(
         name_card_id=namecard.id,
         type="email",
-        label="仕事用",
         value="tanaka@example.com",
         is_primary=True,
     )
     cm2 = ContactMethod(
         name_card_id=namecard.id,
         type="mobile",
-        label="携帯",
         value="090-1234-5678",
         is_primary=False,
     )
@@ -236,14 +234,12 @@ def sample_namecard(
             {
                 "id": cm1.id,
                 "type": cm1.type,
-                "label": cm1.label,
                 "value": cm1.value,
                 "is_primary": cm1.is_primary,
             },
             {
                 "id": cm2.id,
                 "type": cm2.type,
-                "label": cm2.label,
                 "value": cm2.value,
                 "is_primary": cm2.is_primary,
             },
