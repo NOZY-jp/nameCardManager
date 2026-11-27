@@ -58,6 +58,8 @@ function NameCardsContent() {
     [searchQuery, sortBy, sortOrder],
   );
 
+  // 検索条件が変わったら 1 ページ目に戻す（値は参照せず変更検知のみ）。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 依存は変更検知が目的
   useEffect(() => {
     setPage(1);
   }, [searchQuery, sortBy, sortOrder]);

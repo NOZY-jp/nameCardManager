@@ -1,12 +1,20 @@
 import { screen } from "@testing-library/react";
 import { useRouter } from "next/navigation";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { sampleNamecard } from "@/__tests__/utils/fixtures";
 import {
   renderWithProviders,
   userEvent,
 } from "@/__tests__/utils/renderWithProviders";
 import { NameCardItem } from "@/components/namecard/NameCardItem";
+
+// AuthImage は認証付き API から blob を取得するため、テストでは img に置き換える。
+vi.mock("@/components/ui/auth-image", () => ({
+  AuthImage: ({ apiPath, alt }: { apiPath: string; alt: string }) => (
+    // biome-ignore lint/performance/noImgElement: テスト用のスタブ
+    <img src={apiPath} alt={alt} />
+  ),
+}));
 
 describe("NameCardItem", () => {
   const cardWithRelationships = {
@@ -29,13 +37,21 @@ describe("NameCardItem", () => {
 
   const cardWithImage = {
     ...sampleNamecard,
-    image_path: "/images/1.webp",
+    images: [
+      {
+        id: 1,
+        image_path: "sample/front.webp",
+        position: 0,
+        created_at: "2026-01-15T09:00:00Z",
+      },
+    ],
   };
 
   const cardWithoutImage = {
     ...sampleNamecard,
     image_path: null,
     image_front_url: null,
+    images: [],
   };
 
   it("test_namecard_item_renders_name", () => {
@@ -44,10 +60,12 @@ describe("NameCardItem", () => {
     expect(screen.getByText("田中 太郎")).toBeInTheDocument();
   });
 
-  it("test_namecard_item_renders_relationships", () => {
+  it("test_namecard_item_renders_company", () => {
     renderWithProviders(<NameCardItem card={cardWithRelationships} />);
 
-    expect(screen.getByText("建築士会/桑名支部/青年会長")).toBeInTheDocument();
+    expect(
+      screen.getByText("株式会社テスト / 営業部 / 部長"),
+    ).toBeInTheDocument();
   });
 
   it("test_namecard_item_renders_tags", () => {
@@ -64,7 +82,7 @@ describe("NameCardItem", () => {
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute(
       "src",
-      expect.stringContaining("/images/1.webp"),
+      expect.stringContaining("/images/nc-001/thumbnail"),
     );
   });
 

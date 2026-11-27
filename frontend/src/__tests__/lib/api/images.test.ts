@@ -21,15 +21,17 @@ describe("images API", () => {
     const file = new File(["dummy"], "photo.jpg", { type: "image/jpeg" });
     await imageApi.upload(file);
 
+    // 境界文字列は axios に決めさせるため Content-Type は指定しない（undefined）
     expect(mockAxiosInstance.post).toHaveBeenCalledWith(
       expect.stringContaining("/images/upload"),
-      expect.any(FormData),
+      expect.anything(),
       expect.objectContaining({
-        headers: expect.objectContaining({
-          "Content-Type": "multipart/form-data",
-        }),
+        headers: expect.objectContaining({ "Content-Type": undefined }),
       }),
     );
+
+    const body = mockAxiosInstance.post.mock.calls[0][1];
+    expect(Object.prototype.toString.call(body)).toBe("[object FormData]");
   });
 
   it("sends corners for image processing", async () => {
