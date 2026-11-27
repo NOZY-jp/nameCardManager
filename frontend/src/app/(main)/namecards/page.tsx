@@ -1,8 +1,8 @@
 "use client";
 
 import { ArrowDownAZ, ArrowUpAZ } from "lucide-react";
-import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { NameCardList } from "@/components/namecard";
 import { getNameCards, type NameCard } from "@/lib/api/namecards";
 import { searchNameCards } from "@/lib/api/search";

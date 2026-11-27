@@ -4,8 +4,8 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import type { NameCard } from "@/lib/api/namecards";
 import type { CONTACT_METHOD_TYPES } from "@/lib/schemas/contact-method";
 import type { NamecardCreateFormData } from "@/lib/schemas/namecard";
-import { NameCardForm } from "./NameCardForm";
 import styles from "./NameCardEditDialog.module.scss";
+import { NameCardForm } from "./NameCardForm";
 
 interface RelationshipOption {
   id: string;

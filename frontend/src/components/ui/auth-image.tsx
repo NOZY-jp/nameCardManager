@@ -37,6 +37,6 @@ export function AuthImage({ apiPath, alt, ...rest }: AuthImageProps) {
 
   if (!blobUrl) return null;
 
-  // biome-ignore lint/a11y/useAltText: alt is passed via props spread
+  // biome-ignore lint/performance/noImgElement: blob URL のため next/image を使わない
   return <img src={blobUrl} alt={alt} {...rest} />;
 }

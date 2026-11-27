@@ -77,16 +77,23 @@ export function ImageUploadOCR({ guideRect, onComplete }: ImageUploadOCRProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const backgroundOcrRef = useRef<Promise<ProcessImageResponse> | null>(null);
 
-  const startBackgroundOcr = useCallback((dataUrl: string) => {
-    const ocrPromise = (async () => {
-      const file = await dataUrlToFile(dataUrl, "upload.jpg");
-      const { upload_id } = await imageApi.upload(file);
-      const { width, height } = await getImageNaturalSize(dataUrl);
-      const defaultCorners = getDefaultCornersForFile(width, height, guideRect);
-      return imageApi.process({ upload_id, corners: defaultCorners });
-    })();
-    backgroundOcrRef.current = ocrPromise;
-  }, [guideRect]);
+  const startBackgroundOcr = useCallback(
+    (dataUrl: string) => {
+      const ocrPromise = (async () => {
+        const file = await dataUrlToFile(dataUrl, "upload.jpg");
+        const { upload_id } = await imageApi.upload(file);
+        const { width, height } = await getImageNaturalSize(dataUrl);
+        const defaultCorners = getDefaultCornersForFile(
+          width,
+          height,
+          guideRect,
+        );
+        return imageApi.process({ upload_id, corners: defaultCorners });
+      })();
+      backgroundOcrRef.current = ocrPromise;
+    },
+    [guideRect],
+  );
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {

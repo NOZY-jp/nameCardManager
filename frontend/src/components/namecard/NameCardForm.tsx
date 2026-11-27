@@ -60,9 +60,7 @@ function flattenRelationships(
 ): Array<{ id: string; label: string }> {
   const result: Array<{ id: string; label: string }> = [];
   for (const node of nodes) {
-    const label = parentName
-      ? `${parentName}/${node.name}`
-      : node.name;
+    const label = parentName ? `${parentName}/${node.name}` : node.name;
     result.push({ id: node.id, label });
     if (node.children?.length) {
       result.push(...flattenRelationships(node.children, node.name));
@@ -122,7 +120,10 @@ export function NameCardForm({
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   const [additionalImagePaths, setAdditionalImagePaths] = useState<string[]>(
-    () => existingImages.length > 1 ? existingImages.slice(1).map((img) => img.image_path) : [],
+    () =>
+      existingImages.length > 1
+        ? existingImages.slice(1).map((img) => img.image_path)
+        : [],
   );
   const [imageFlowState, setImageFlowState] = useState<{
     active: boolean;
@@ -170,7 +171,13 @@ export function NameCardForm({
       }
       setImageFlowState({ active: false, source: "file", replaceIndex: null });
     },
-    [imageFlowState.replaceIndex, initialImagePath, additionalImagePaths, setValue, updateFormImagePaths],
+    [
+      imageFlowState.replaceIndex,
+      initialImagePath,
+      additionalImagePaths,
+      setValue,
+      updateFormImagePaths,
+    ],
   );
 
   const handleDeleteImage = useCallback(
@@ -179,7 +186,9 @@ export function NameCardForm({
         setValue("image_path", "", { shouldDirty: true });
       } else {
         const additionalIdx = initialImagePath ? index - 1 : index;
-        const newPaths = additionalImagePaths.filter((_, i) => i !== additionalIdx);
+        const newPaths = additionalImagePaths.filter(
+          (_, i) => i !== additionalIdx,
+        );
         setAdditionalImagePaths(newPaths);
         updateFormImagePaths([
           ...(initialImagePath ? [initialImagePath] : []),
@@ -236,6 +245,7 @@ export function NameCardForm({
                       style={{ maxWidth: "100%", height: "auto" }}
                     />
                   ) : (
+                    // biome-ignore lint/performance/noImgElement: API の相対 URL を返すため next/image を使わない
                     <img
                       src={`${process.env.NEXT_PUBLIC_API_BASE_URL || ""}/uploads/${path.replace(/^\/uploads\//, "")}`}
                       alt={`名刺画像 ${index + 1}`}
@@ -480,14 +490,9 @@ export function NameCardForm({
                         type="button"
                         className={styles.chipRemove}
                         onClick={() => {
-                          const newIds = selectedRelIds.filter(
-                            (x) => x !== id,
-                          );
+                          const newIds = selectedRelIds.filter((x) => x !== id);
                           setSelectedRelIds(newIds);
-                          setValue(
-                            "relationship_ids",
-                            newIds.map(Number),
-                          );
+                          setValue("relationship_ids", newIds.map(Number));
                         }}
                       >
                         <X size={12} />
@@ -545,9 +550,7 @@ export function NameCardForm({
                         type="button"
                         className={styles.chipRemove}
                         onClick={() => {
-                          const newIds = selectedTagIds.filter(
-                            (x) => x !== id,
-                          );
+                          const newIds = selectedTagIds.filter((x) => x !== id);
                           setSelectedTagIds(newIds);
                           setValue("tag_ids", newIds.map(Number));
                         }}
