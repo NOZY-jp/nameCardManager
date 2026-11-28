@@ -190,7 +190,10 @@
 | **pg_trgm（trigram）** | ❌ 非対応 | — | — | — | — |
 | **Elasticsearch + Kuromoji** | ✅ 最高 | ✅ | ✅ | 高（別サービス） | 高（JVM 512MB+） |
 
-> **注意**: `pg_trgm` は CJK 文字を non-alphanumeric として無視するため、**日本語検索には使えない**。
+> **注意（2026-11-28 更新）**: この表は刷新前の検討時点のもの。Phase 3 では `pg_bigm.gin_key_like` が
+> 使えないため、大小無視の部分一致を索引付きで実現する目的で **`pg_trgm`（`lower(col)` + `gin_trgm_ops`）**
+> を採用した（`docs/dev/namecards-api.md`、`docs/dev/db/drizzle.md`）。日本語も `LIKE` で一致する
+> （E2E でかな・漢字を確認）。ただし trigram は 3 文字以上の検索語でだけ索引が効き、1〜2 文字は全走査になる。
 
 #### 各選択肢の詳細
 
