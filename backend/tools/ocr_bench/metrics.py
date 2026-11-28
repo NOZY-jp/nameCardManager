@@ -187,15 +187,21 @@ def aggregate_cards(cards: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def variance(values: list[float]) -> dict[str, float]:
-    """ばらつき（最小・最大・平均・標準偏差）。"""
+    """ばらつき（最小・最大・平均・標準偏差）。
+
+    標準偏差は 2 件以上のときだけ返す（1 件以下で σ=0 を作らない）。
+    """
     if not values:
-        return {"min": 0.0, "max": 0.0, "mean": 0.0, "stdev": 0.0}
-    return {
+        return {"samples": 0}
+    result: dict[str, float] = {
+        "samples": len(values),
         "min": round(min(values), 4),
         "max": round(max(values), 4),
         "mean": round(statistics.fmean(values), 4),
-        "stdev": round(statistics.pstdev(values), 4) if len(values) > 1 else 0.0,
     }
+    if len(values) >= 2:
+        result["stdev"] = round(statistics.pstdev(values), 4)
+    return result
 
 
 def unstable_fields(

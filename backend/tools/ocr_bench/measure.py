@@ -155,6 +155,8 @@ def main(argv: list[str] | None = None) -> int:
         "--price-per-card-jpy", type=float, default=DEFAULT_JPY_PER_CARD
     )
     args = parser.parse_args(argv)
+    if args.runs < 2:
+        parser.error("--runs は 2 以上にしてください（同じ画像・設定で最低 2 回）")
 
     images = find_images(args.images)
     if args.limit > 0:
@@ -249,11 +251,12 @@ def print_summary(result: dict[str, Any]) -> None:
             f"{run['run']}\t{run['field_accuracy']:.3f}\t{run['char_accuracy']:.3f}"
             f"\t{run['cer']:.4f}\t{run['fabrication_count']}\t{run['cards']}"
         )
-    spread = result["variance"]
+    spread = result["variance"]["field_accuracy"]
     print(
         "variance field_acc: "
-        f"min={spread['field_accuracy']['min']} max={spread['field_accuracy']['max']} "
-        f"stdev={spread['field_accuracy']['stdev']}"
+        f"samples={spread.get('samples', 0)} "
+        f"min={spread.get('min', 'n/a')} max={spread.get('max', 'n/a')} "
+        f"stdev={spread.get('stdev', 'n/a')}"
     )
 
 

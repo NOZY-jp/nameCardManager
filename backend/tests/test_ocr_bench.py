@@ -87,7 +87,7 @@ def test_output_contains_no_raw_text(tmp_path: Path) -> None:
             "--provider",
             "fake",
             "--runs",
-            "1",
+            "2",
         ]
     )
 
@@ -157,10 +157,62 @@ def test_missing_truth_is_recorded_as_error(tmp_path: Path) -> None:
             "--provider",
             "fake",
             "--runs",
-            "1",
+            "2",
         ]
     )
 
     assert code == 1
     result = json.loads(out.read_text(encoding="utf-8"))
-    assert result["errors"] == [{"stem": "unknown", "error": "truth_missing"}]
+    assert result["errors"] == [{"stem": "unknown", "error": "truth_missing"}] * 2
+
+
+def _dummy_inputs(tmp_path: Path) -> tuple[Path, Path]:
+    images = tmp_path / "images"
+    images.mkdir()
+    _make_png(images / "card1.png")
+    truth_path = tmp_path / "truth.json"
+    truth_path.write_text(
+        json.dumps({"card1": TRUTH}, ensure_ascii=False), encoding="utf-8"
+    )
+    return images, truth_path
+
+
+def test_cli_rejects_fewer_than_two_runs(tmp_path: Path) -> None:
+    """受け入れ条件(3): 同じ画像・設定で最低 2 回。0/1 回は受け付けない。"""
+    images, truth_path = _dummy_inputs(tmp_path)
+    for runs in ("0", "1"):
+        out = tmp_path / f"result-{runs}.json"
+        try:
+            code = measure.main(
+                [
+                    "--images",
+                    str(images),
+                    "--truth",
+                    str(truth_path),
+                    "--out",
+                    str(out),
+                    "--provider",
+                    "fake",
+                    "--runs",
+                    runs,
+                ]
+            )
+        except SystemExit as exc:  # argparse の引数エラー
+            code = exc.code
+        assert code not in (0, None)
+        assert not out.exists()
+
+
+def test_variance_does_not_fake_zero_spread() -> None:
+    """1 件以下では σ を返さない（0 を捏造しない）。"""
+    empty = metrics.variance([])
+    single = metrics.variance([0.5])
+    assert empty["samples"] == 0
+    assert "stdev" not in empty
+    assert single["samples"] == 1
+    assert "stdev" not in single
+    assert single["mean"] == 0.5
+
+    pair = metrics.variance([0.5, 0.7])
+    assert pair["samples"] == 2
+    assert pair["stdev"] > 0
