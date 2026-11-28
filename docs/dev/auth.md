@@ -43,6 +43,8 @@ Cookie 属性（`src/lib/auth/config.ts`）:
 - 既定（`LEGACY_JWT_SWITCH_DATE` 未設定）は**互換期間は未開始**で、旧 JWT はすべて 401。
 - Phase 6 の切替日に `LEGACY_JWT_SWITCH_DATE=YYYY-MM-DD` と `LEGACY_JWT_SECRET`（旧 `SECRET_KEY`）を設定して有効化する。
 - 期限後は 401。利用者には再ログインを案内する（新しい Cookie セッションに置き換わる）。
+- ログイン応答の `access_token`（旧形式 HS256）はクライアントが保持する前提で、**サーバー側では失効できない**（`logout` はセッション Cookie を消すだけ）。移行期間が終わったらクライアントから破棄する。
+- `SECRET_KEY` が未設定のとき、`login` はセッショントークンを代わりに返さず **500** で失敗する（本文にセッショントークンを出さない）。
 
 ### 移行手順（Phase 6 当日）
 
@@ -56,7 +58,7 @@ Cookie 属性（`src/lib/auth/config.ts`）:
 | 既存 FastAPI | 新実装 | 備考 |
 | --- | --- | --- |
 | `POST /register` → 201 `{id,email,created_at}` | 同じ | 重複は 409 `Email already registered` |
-| `POST /login` → `{access_token,token_type}` | 同じ | 併せて httpOnly Cookie を発行。`access_token` は移行期間の互換用 |
+| `POST /login` → `{access_token,token_type}` | 同じ | 併せて httpOnly Cookie を発行。`access_token` は旧形式（HS256, `SECRET_KEY`）で、セッション Cookie の Auth.js トークンとは別物 |
 | `GET /me` → `{id,email,created_at}` | 同じ | セッション Cookie または旧 JWT |
 | （なし） | `POST /logout` → 204 | Cookie を破棄 |
 

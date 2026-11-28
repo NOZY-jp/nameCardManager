@@ -43,7 +43,7 @@ export async function verifyLegacyJwt(
   if (!window) return null;
   if (now.getTime() < window.start || now.getTime() > window.end) return null;
 
-  const secret = options.secret ?? process.env.LEGACY_JWT_SECRET ?? "";
+  const secret = options.secret ?? process.env.SECRET_KEY ?? "";
   if (!secret) return null;
 
   try {

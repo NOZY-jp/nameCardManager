@@ -9,7 +9,7 @@ import { getCurrentUser, unauthorized } from "@/lib/auth/guard";
 
 afterEach(() => {
   process.env.LEGACY_JWT_SWITCH_DATE = undefined;
-  process.env.LEGACY_JWT_SECRET = undefined;
+  delete process.env.SECRET_KEY;
 });
 
 describe("guard", () => {
@@ -35,7 +35,7 @@ describe("guard", () => {
       .setSubject("7")
       .setExpirationTime(Math.floor(Date.now() / 1000) + 3600)
       .sign(createSecretKey(Buffer.from(secret)));
-    process.env.LEGACY_JWT_SECRET = secret;
+    process.env.SECRET_KEY = secret;
     process.env.LEGACY_JWT_SWITCH_DATE = new Date().toISOString().slice(0, 10);
 
     const request = new Request("http://localhost/api", {
