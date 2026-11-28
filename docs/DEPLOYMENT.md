@@ -198,7 +198,7 @@ Next.js 単一アプリへの刷新（`docs/plans/nextjs-fullstack-rebuild.md`�
 | セッションCookieの日数 | — | `AUTH_SESSION_MAX_AGE_DAYS` | 既定 30 |
 | OCR 切替 | `OCR_PROVIDER=vertex` | `OCR_PROVIDER=vertex` | 同名で引き継ぐ |
 | Vertex 設定 | `VERTEX_PROJECT` / `VERTEX_LOCATION` / `VERTEX_MODEL` | 同じ | `gemini-3.1-flash-lite` |
-| 画像ディレクトリ | `IMAGE_DIR` | `IMAGE_DIR` | 既存の uploads を共用（webp/サムネイル） |
+| 画像ディレクトリ | `IMAGE_DIR` | `IMAGE_DIR` | 既存の uploads を共用（webp/サムネイル）。APIのアップロード上限は nginx と同じ 10MB |
 | Vertex 認証 | `GOOGLE_APPLICATION_CREDENTIALS`（`secrets/vertex-sa.json` を `:ro` マウント） | 同じ | 鍵はファイルのまま |
 | API ベース URL | `NEXT_PUBLIC_API_BASE_URL` | 不要 | 同一オリジンの `/api/v1` へ寄せる |
 | OCR サービス | `OCR_SERVICE_URL` | 使わない | Phase 7 で削除 |

@@ -15,7 +15,9 @@ Phase 3 までと同様、FastAPI と並行稼働する Next.js 側の Route Han
 | POST | `/api/v1/namecards/{id}/images` | 画像レコード追加（201） |
 | PUT/DELETE | `/api/v1/namecards/{id}/images/{imageId}` | 差し替え / 削除（削除後 position 再計算） |
 
-- アップロードは JPEG / PNG / WebP、20MB まで。不正形式は 422。
+- アップロードは JPEG / PNG / WebP、**10MB まで**（nginx の `client_max_body_size 10M` に合わせる）。
+  `Content-Length` と読み取り中の両方で上限を判定し、超過は 413。不正形式は 422。
+- 一時保持はプロセス内に TTL 30 分・最大 200 件・合計 200MB・ユーザーあたり 20 件。超過時は最古を追い出す。
 - 未認証は 401、他ユーザーの名刺・画像は 404（存在を漏らさない）。
 
 ## 保存・変換
@@ -28,15 +30,19 @@ Phase 3 までと同様、FastAPI と並行稼働する Next.js 側の Route Han
 
 ## 既存 image_path の互換
 
-`src/lib/images/paths.ts` の1箇所で解決する（読み取り専用）。次の候補を順に試す。
+`src/lib/images/paths.ts` の1箇所で解決する。**返すのは `IMAGE_DIR` の realpath 配下に実在するファイルだけ**
+（セパレータ境界で判定。シンボリックリンクの脱出も拒否）。`..` を含むパス・外部絶対パスは 404。
 
-1. 指定パスそのもの（絶対）
-2. `process.cwd()` からの相対
-3. `IMAGE_DIR/<basename>`
-4. `/uploads/...` を除いた `IMAGE_DIR` 配下
-5. 拡張子が無ければ `.webp` を補う
+1. `IMAGE_DIR` 配下の絶対パス（そのまま）
+2. `/uploads/...` / `uploads/images/...` / basename を `IMAGE_DIR` 基準へ写像
+3. 拡張子が無ければ `.webp` を補う
 
 サムネイルも同様に `thumbnails/` を見る。ファイルが無い場合は FastAPI と同じく白い WebP を返す。
+
+**書き込み側**（画像追加・差し替え）は、`IMAGE_DIR` 配下に実在する自前形式のパスだけを許可する
+（外部絶対パス・`..`・存在しないパスは 422）。DB に外部パスを入れさせない。
+
+画像は `sharp` で再エンコードするため、EXIF / GPS などのメタデータは保存前に落ちる。
 
 ## OCR（Vertex AI）
 

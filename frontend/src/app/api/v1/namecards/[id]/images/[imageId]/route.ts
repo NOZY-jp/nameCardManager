@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, unauthorized } from "@/lib/auth/guard";
+import { isStorableImagePath } from "@/lib/images/paths";
 import {
   serviceError,
   type ValidationIssue,
@@ -48,6 +49,15 @@ export async function PUT(
   }
   const parsed = parsePath(await request.json().catch(() => null));
   if (Array.isArray(parsed)) return validationResponse(parsed);
+  if (!isStorableImagePath(parsed)) {
+    return validationResponse([
+      {
+        type: "value_error",
+        loc: ["body", "image_path"],
+        msg: "image_path must be an existing file under IMAGE_DIR",
+      },
+    ]);
+  }
   try {
     return NextResponse.json(
       await replaceNameCardImage(user.id, Number(id), Number(imageId), parsed),

@@ -89,6 +89,16 @@ test.describe("画像 API", () => {
     });
     expect(invalidCorners.status()).toBe(422);
 
+    for (const badPath of ["/etc/passwd", "../../frontend/package.json"]) {
+      const rejected = await request.post(
+        `/api/v1/namecards/${card.id}/images`,
+        {
+          data: { image_path: badPath },
+        },
+      );
+      expect(rejected.status()).toBe(422);
+    }
+
     const saved = await request.post(`/api/v1/namecards/${card.id}/images`, {
       data: { image_path: result.image_path },
     });
@@ -148,6 +158,17 @@ test.describe("画像 API", () => {
     expect(removed.status()).toBe(204);
     const after = await request.get(`/api/v1/images/namecard/${card.id}`);
     expect((await after.json()).images).toEqual([]);
+  });
+
+  test("アップロードは 10MB を超えると 413", async ({ request }) => {
+    await signup(request);
+    const oversized = Buffer.alloc(11 * 1024 * 1024, 1);
+    const response = await request.post("/api/v1/images/upload", {
+      multipart: {
+        file: { name: "big.png", mimeType: "image/png", buffer: oversized },
+      },
+    });
+    expect(response.status()).toBe(413);
   });
 
   test("既存 image_path の互換解決（uploads/images 相対・サムネイル）", async ({
