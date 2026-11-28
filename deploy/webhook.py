@@ -18,12 +18,15 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import pathlib
 import subprocess
 import sys
 import threading
+import time
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 STATE_DIR = pathlib.Path(os.environ.get("STATE_DIR") or pathlib.Path.home() / "namecard-deploy")
@@ -33,6 +36,13 @@ HOST = os.environ.get("WEBHOOK_HOST", "127.0.0.1")
 PORT = int(os.environ.get("WEBHOOK_PORT", "8791"))
 HOOK_PATH = os.environ.get("WEBHOOK_PATH", "/hook")
 BRANCH_REF = os.environ.get("DEPLOY_REF", "refs/heads/main")
+REPO_SLUG = os.environ.get("REPO_SLUG", "NOZY-jp/nameCardManager")
+# GitHub の webhook 送信元 IP レンジ（https://api.github.com/meta の hooks）。
+# Secret を GitHub 側に登録していない場合、このレンジからの送信だけを受理する。
+GITHUB_META_URL = "https://api.github.com/meta"
+IP_CACHE = STATE_DIR / "github-hooks-ips.json"
+IP_CACHE_TTL = 3600
+_ip_cache: tuple[float, list] = (0.0, [])
 MAX_BODY = 2 * 1024 * 1024
 LOG_FILE = STATE_DIR / "webhook.log"
 
@@ -69,6 +79,52 @@ def verify(signature_header: str | None, body: bytes) -> bool:
         return False
     expected = "sha256=" + hmac.new(_secret, body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature_header.strip())
+
+
+def github_hook_networks() -> list:
+    """GitHub の webhook 送信元レンジ。取得に失敗したら空（=無署名は拒否）。"""
+    global _ip_cache
+    now = time.time()
+    cached_at, networks = _ip_cache
+    if networks and now - cached_at < IP_CACHE_TTL:
+        return networks
+
+    payload = None
+    try:
+        request = urllib.request.Request(
+            GITHUB_META_URL, headers={"Accept": "application/vnd.github+json"}
+        )
+        with urllib.request.urlopen(request, timeout=8) as response:  # noqa: S310
+            payload = json.load(response)
+    except Exception as exc:  # noqa: BLE001 - fall back to the on-disk cache
+        log(f"github meta fetch failed: {exc}")
+        try:
+            payload = json.loads(IP_CACHE.read_text(encoding="utf-8"))
+        except Exception:
+            return []
+
+    networks = []
+    for cidr in payload.get("hooks") or []:
+        try:
+            networks.append(ipaddress.ip_network(cidr, strict=False))
+        except ValueError:
+            continue
+    if networks:
+        _ip_cache = (now, networks)
+        try:
+            IP_CACHE.write_text(json.dumps(payload), encoding="utf-8")
+        except OSError:
+            pass
+    return networks
+
+
+def from_github(client_ip: str) -> bool:
+    try:
+        address = ipaddress.ip_address(client_ip)
+    except ValueError:
+        return False
+    return any(address in network for network in github_hook_networks())
+
 
 
 def run_deploy(sha: str) -> None:
@@ -127,9 +183,19 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         body = self.rfile.read(length)
-        if not verify(self.headers.get("X-Hub-Signature-256"), body):
-            log(f"rejected: bad signature from {self.client_address[0]}")
-            self._send(403, {"error": "invalid signature"})
+        client_ip = self.headers.get("CF-Connecting-IP") or self.client_address[0]
+        signature = self.headers.get("X-Hub-Signature-256")
+        if signature:
+            # 通常経路: GitHub 側に Secret を登録してあれば HMAC で判定
+            authorized = verify(signature, body)
+            mode = "hmac"
+        else:
+            # Secret 未登録の経路: GitHub の webhook 送信元 IP だけを受理
+            authorized = from_github(client_ip)
+            mode = "github-ip"
+        if not authorized:
+            log(f"rejected ({mode}) from {client_ip}")
+            self._send(403, {"error": "not authorized"})
             return
 
         event = self.headers.get("X-GitHub-Event", "")
@@ -137,6 +203,12 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(body or b"{}")
         except json.JSONDecodeError:
             self._send(400, {"error": "invalid json"})
+            return
+
+        repo = (payload.get("repository") or {}).get("full_name")
+        if repo and repo != REPO_SLUG:
+            log(f"rejected: unexpected repository {repo}")
+            self._send(403, {"error": "unexpected repository"})
             return
 
         if event == "ping":
@@ -168,7 +240,7 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         threading.Thread(target=run_deploy, args=(sha,), daemon=True).start()
-        log(f"accepted push: {sha[:8]} by {payload.get('pusher', {}).get('name', '?')}")
+        log(f"accepted push ({mode}): {sha[:8]} by {payload.get('pusher', {}).get('name', '?')}")
         self._send(202, {"status": "queued", "sha": sha})
 
     def log_message(self, fmt: str, *args: object) -> None:  # keep journald quiet

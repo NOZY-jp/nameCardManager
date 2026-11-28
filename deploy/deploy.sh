@@ -135,9 +135,11 @@ apply() {
   local from="$1" to="$2" build_list running up_list svc
 
   build_list=$(changed_services "$from" "$to")
-  if [ "$FORCE_REBUILD" = "1" ]; then
-    build_list=$'frontend\nbackend'
-  fi
+  case "$FORCE_REBUILD" in
+    1|all) build_list=$'frontend\nbackend' ;;
+    ''|0) ;;
+    *) build_list=$(echo "$FORCE_REBUILD" | tr ',' '\n') ;;
+  esac
   # 対象ブランチの構成ファイルが変わったら全サービス
   if git -C "$APP_DIR" diff --name-only "$from" "$to" 2>/dev/null | grep -qxE 'docker-compose\.(yml|yaml)'; then
     build_list=$'frontend\nbackend'
@@ -182,7 +184,7 @@ fi
 
 log "=== deploy ${TARGET:0:8} (checkout ${PREV:0:8}, last deployed ${LAST:0:8}) ==="
 
-if [ "$TARGET" = "$PREV" ] && [ "$TARGET" = "$LAST" ]; then
+if [ "$TARGET" = "$PREV" ] && [ "$TARGET" = "$LAST" ] && [ "$FORCE_REBUILD" = "0" ]; then
   log "already deployed; health check only"
   wait_for_health || { log "=== health check failed (no change) ==="; exit 1; }
   log "=== done (no change) ==="

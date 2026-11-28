@@ -225,7 +225,21 @@ ssh nozyjp
 設置後に必要な外側の設定（このリポジトリには保存しない）:
 
 1. Cloudflare Tunnel の Public Hostname を追加: `deploy.nozyjp.com` → `http://localhost:8791`
-2. GitHub の Webhook を追加: Payload URL `https://deploy.nozyjp.com/hook`、Content type `application/json`、Secret は `~/namecard-deploy/webhook.secret` の値、イベントは `push` のみ
+2. GitHub の Webhook を追加: Payload URL `https://deploy.nozyjp.com/hook`、Content type `application/json`、イベントは `push` のみ
+
+### 受信の認証方式
+
+二段構えで、どちらかを満たしたものだけを受理する。
+
+| 方式 | 条件 | 設定 |
+| --- | --- | --- |
+| HMAC 署名 | `X-Hub-Signature-256` が `webhook.secret` と一致 | GitHub の Secret に `~/namecard-deploy/webhook.secret` の値を登録 |
+| 送信元 IP | 署名ヘッダが無い場合、`CF-Connecting-IP` が GitHub の webhook 送信元（`api.github.com/meta` の `hooks`）に含まれる | 追加設定不要 |
+
+- 現在の GitHub 側は **Secret 未登録**で、送信元 IP 方式で運用している。HMAC に切り替えるときは、GitHub の Webhook 編集で Secret を入力するだけでよい（コード変更不要）。
+- IP レンジは 1 時間キャッシュし、取得に失敗したときは無署名を拒否する（fail closed）。
+- どちらの方式でも、ペイロードの `repository.full_name` が一致しないものは 403。
+- 偽の trigger でも本番に入るのは「CI が緑で `origin/main` の祖先」のコミットだけ（`deploy.sh` 側で検証）。
 
 ### 運用
 
@@ -240,8 +254,9 @@ cat ~/namecard-deploy/last-deploy
 # 手動でデプロイ（CI を待たない）
 SKIP_CI_CHECK=1 ~/namecard-deploy/deploy.sh
 
-# 差分が無くても再ビルド（Dockerfile や依存だけ変えたとき）
+# 差分が無くても再ビルド（Dockerfile や依存だけ変えたとき。サービス名のカンマ区切りも可）
 FORCE_REBUILD=1 ~/namecard-deploy/deploy.sh
+FORCE_REBUILD=backend ~/namecard-deploy/deploy.sh
 
 # 一時停止 / 再開
 systemctl --user disable --now namecard-webhook.service namecard-deploy.timer
