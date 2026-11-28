@@ -30,9 +30,11 @@ awk '/^retry_suppressed\(\) \{/,/^if retry_suppressed /' "$HERE/deploy.sh" | sed
 source "$ROOT/functions.sh"
 
 FAKE_JSON="$ROOT/check-runs.json"
-export FAKE_JSON
+CURL_LOG="$ROOT/curl.log"
+export FAKE_JSON CURL_LOG
 cat >"$ROOT/bin/curl" <<'EOF'
 #!/bin/sh
+echo x >>"$CURL_LOG"
 cat "$FAKE_JSON"
 EOF
 chmod +x "$ROOT/bin/curl"
@@ -109,33 +111,69 @@ if wait_for_ci deadbeef >/dev/null 2>&1; then
 fi
 
 
-# --- retry_suppressed: クールダウンと別 sha の扱い ---
-if ! retry_suppressed deadbeef; then
-  fail "recent marker must suppress retry"
-fi
+# --- retry_suppressed: クールダウン・CI 再照会・別 sha の扱い ---
+retry_rc() { # <sha> -> 戻り値だけを返す
+  local rc=0
+  retry_suppressed "$1" >/dev/null 2>&1 || rc=$?
+  printf '%s' "$rc"
+}
 
-# クールダウン超過 + CI 失敗の理由なら、待たずに中止して時刻だけ更新
+# クールダウン中は再照会せず抑止（curl を呼ばない）
+write_runs '[{"status":"completed","conclusion":"success"}]'
+now="$(date +%s)"
+printf 'deadbeef %s ci-cancelled
+' "$now" >"$STATE_DIR/failed-deploy"
+before="$(wc -l <"$CURL_LOG" 2>/dev/null || echo 0)"
+[ "$(retry_rc deadbeef)" = "0" ] || fail "recent marker must suppress retry"
+after="$(wc -l <"$CURL_LOG" 2>/dev/null || echo 0)"
+[ "$before" = "$after" ] || fail "cooldown suppression must not query CI"
+
+# クールダウン超過 + CI が success に復帰 → マーカー削除して続行（return 2）
+write_runs '[{"status":"completed","conclusion":"success"}]'
 printf 'deadbeef 1 ci-cancelled
 ' >"$STATE_DIR/failed-deploy"
-rc=0
-retry_suppressed deadbeef || rc=$?
-[ "$rc" -eq 1 ] || fail "old ci marker must abort immediately"
-read -r _ at2 _ < "$STATE_DIR/failed-deploy" || true
+[ "$(retry_rc deadbeef)" = "2" ] || fail "recovered CI must continue deploy"
+[ ! -e "$STATE_DIR/failed-deploy" ] || fail "recovered CI must clear failed-deploy"
+
+# クールダウン超過 + CI が pending（cancelled）のまま → 待たずに中止＋時刻更新
+write_runs '[{"status":"completed","conclusion":"cancelled"}]'
+printf 'deadbeef 1 ci-cancelled
+' >"$STATE_DIR/failed-deploy"
+[ "$(retry_rc deadbeef)" = "1" ] || fail "old ci marker must abort immediately"
+read -r _ at2 _ <"$STATE_DIR/failed-deploy" || true
 [ "${at2:-0}" -gt 1 ] || fail "retry abort must refresh marker epoch"
+
+# クールダウン超過 + CI が failure → 中止（理由を ci-failure に）
+write_runs '[{"status":"completed","conclusion":"failure"}]'
+printf 'deadbeef 1 ci-cancelled
+' >"$STATE_DIR/failed-deploy"
+[ "$(retry_rc deadbeef)" = "1" ] || fail "failure on retry must abort"
+read -r _ _ reason2 <"$STATE_DIR/failed-deploy" || true
+[ "$reason2" = "ci-failure" ] || fail "failure on retry must record ci-failure: $reason2"
+
+# クールダウン超過 + API 障害（unknown）→ 待たずに中止
+printf 'not json
+' >"$FAKE_JSON"
+printf 'deadbeef 1 ci-cancelled
+' >"$STATE_DIR/failed-deploy"
+[ "$(retry_rc deadbeef)" = "1" ] || fail "unknown CI state must abort immediately"
 
 # deploy 失敗（理由 deploy）は通常どおり CI を待つ
 printf 'deadbeef 1 deploy
 ' >"$STATE_DIR/failed-deploy"
-rc=0
-retry_suppressed deadbeef || rc=$?
-[ "$rc" -eq 2 ] || fail "deploy marker must not skip CI wait"
+[ "$(retry_rc deadbeef)" = "2" ] || fail "deploy marker must not skip CI wait"
 
 # 別 sha は抑止しない
 printf 'othersha 1 ci-cancelled
 ' >"$STATE_DIR/failed-deploy"
-rc=0
-retry_suppressed deadbeef || rc=$?
-[ "$rc" -eq 2 ] || fail "different sha must not be suppressed"
+[ "$(retry_rc deadbeef)" = "2" ] || fail "different sha must not be suppressed"
 
-printf 'OK: cancelled/stale are pending, failure aborts, success passes, timeout marks and suppresses retries
+# マーカー書き込み失敗でも警告ログを出し、戻り値は変えない（record_ci_give_up 単体）
+out=$(STATE_DIR="$ROOT/no-such-dir" record_ci_give_up deadbeef ci-cancelled 2>&1)
+case "$out" in
+  *"warn: cannot write failed-deploy"*) ;;
+  *) fail "write failure must log a warning: $out" ;;
+esac
+
+printf 'OK: cancelled/stale are pending, failure aborts, success passes, retries are suppressed and recover
 '

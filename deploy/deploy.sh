@@ -215,8 +215,13 @@ else:
 }
 
 # CI が成功しないまま諦めたことを failed-deploy に残す（sha 単位でクールダウンする）。
+# 書き込みに失敗してもデプロイの終了コードは変えない（抑止できない旨をログに残す）。
 record_ci_give_up() { # <sha> <reason>
-  printf '%s %s %s\n' "$1" "$(date +%s)" "$2" >"$STATE_DIR/failed-deploy"
+  if ! printf '%s %s %s\n' "$1" "$(date +%s)" "$2" >"$STATE_DIR/failed-deploy"; then
+    log "warn: cannot write failed-deploy (retry suppression unavailable)"
+    return 0
+  fi
+  return 0
 }
 
 wait_for_ci() {
@@ -358,7 +363,7 @@ fi
 # マーカーは sha 単位なので、main が進めば別 sha として通常どおりデプロイされる。
 # 戻り値: 0=クールダウン中で抑制, 1=CI 失敗の再試行を待たず中止, 2=通常続行
 retry_suppressed() { # <sha>
-  local sha="$1" failed_sha failed_at reason age
+  local sha="$1" failed_sha failed_at reason age result state detail
   [ -s "$STATE_DIR/failed-deploy" ] || return 2
   read -r failed_sha failed_at reason <"$STATE_DIR/failed-deploy" || true
   [ "$failed_sha" = "$sha" ] || return 2
@@ -369,10 +374,36 @@ retry_suppressed() { # <sha>
   fi
   case "${reason:-deploy}" in
     ci-*)
-      # 2 回目以降は 900 秒待たずに中止し、マーカーの時刻だけ更新する。
-      log "=== CI not successful (${reason#ci-}) on retry; not waiting again; retry suppressed for ${RETRY_COOLDOWN}s ==="
-      printf '%s %s %s\n' "$sha" "$(date +%s)" "$reason" >"$STATE_DIR/failed-deploy"
-      return 1
+      # クールダウン後は CI を 1 回だけ再照会する。成功に変わっていれば抑止を解除して
+      # 通常のデプロイ経路へ戻す（成功しているのに永久に止まるのを防ぐ）。
+      result=$(ci_state "$sha")
+      state=${result%% *}
+      detail=${result#* }
+      case "$state" in
+        success)
+          if rm -f "$STATE_DIR/failed-deploy"; then
+            log "== CI recovered (success); clearing failed-deploy =="
+          else
+            log "warn: CI recovered but cannot remove failed-deploy"
+          fi
+          return 2
+          ;;
+        failure)
+          log "=== CI failure (${detail}) on retry; retry suppressed for ${RETRY_COOLDOWN}s ==="
+          record_ci_give_up "$sha" "ci-failure"
+          return 1
+          ;;
+        pending)
+          log "=== CI still not successful (${detail}) on retry; not waiting again; retry suppressed for ${RETRY_COOLDOWN}s ==="
+          record_ci_give_up "$sha" "ci-$detail"
+          return 1
+          ;;
+        *)
+          log "=== CI state unknown (${detail}) on retry; not waiting again; retry suppressed for ${RETRY_COOLDOWN}s ==="
+          record_ci_give_up "$sha" "ci-$detail"
+          return 1
+          ;;
+      esac
       ;;
   esac
   return 2
