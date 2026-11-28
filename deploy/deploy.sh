@@ -147,6 +147,17 @@ sync_deploy_files() {
   return 0
 }
 
+# reset が成功したときだけ同期する（失敗時に設置物だけ TARGET 版になる不整合を防ぐ）。
+reset_and_sync() {
+  local target="$1"
+  if ! git -C "$APP_DIR" reset --hard "$target"; then
+    log "git reset failed"
+    return 1
+  fi
+  sync_deploy_files "$target" || log "sync: unexpected failure (continuing)"
+  return 0
+}
+
 # CI の状態を GitHub API から読む（public リポジトリなので認証不要）
 ci_state() {
   local sha="$1"
@@ -301,11 +312,9 @@ fi
 
 wait_for_ci "$TARGET" || { log "=== aborted before deploy ==="; exit 1; }
 
-# 設置物は対象コミットの deploy/ から同期する（失敗してもデプロイ本体は止めない）。
-sync_deploy_files "$TARGET" || log "sync: unexpected failure (continuing)"
-
 git -C "$APP_DIR" checkout -q "$BRANCH" 2>/dev/null || true
-git -C "$APP_DIR" reset --hard "$TARGET" || { log "git reset failed"; exit 1; }
+# reset 成功後に、対象コミットの deploy/ を設置先へ同期する。
+reset_and_sync "$TARGET" || { log "git reset failed"; exit 1; }
 
 NEEDS_MIGRATION=0
 if echo "$(changed_services "$PREV" "$TARGET")" | grep -qx backend; then
@@ -325,8 +334,7 @@ fi
 if [ "$FAILED" -ne 0 ]; then
   printf '%s %s\n' "$TARGET" "$(date +%s)" >"$STATE_DIR/failed-deploy"
   log "deploy failed; rolling back to ${PREV:0:8}"
-  git -C "$APP_DIR" reset --hard "$PREV" || log "rollback reset FAILED"
-  sync_deploy_files "$PREV" || log "sync: rollback sync failed (continuing)"
+  reset_and_sync "$PREV" || log "rollback reset FAILED (files kept at $TARGET)"
   apply "$TARGET" "$PREV" || log "rollback build FAILED"
   if wait_for_health; then
     log "=== rollback done; production runs ${PREV:0:8} ==="

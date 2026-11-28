@@ -89,7 +89,29 @@ sync_deploy_files "$TARGET"
 after="$(wc -l <"$SYSTEMCTL_LOG" 2>/dev/null || echo 0)"
 [ "$before" = "$after" ] || fail "second sync should not call systemctl ($before -> $after)"
 
-# --- 3. 同期失敗でも戻り値 0（デプロイを止めない） ---
+# --- 3. ロールバック（PREV へ reset）後は PREV 版の deploy/ が設置される ---
+reset_and_sync "$OLD"
+[ "$(cat "$STATE_DIR/webhook.py")" = "old-worktree" ] || fail "rollback sync must install PREV files"
+
+# --- 4. reset が失敗したら同期しない（設置物だけ新しくなる不整合を防ぐ） ---
+GIT_BIN="$(command -v git)"
+cat >"$ROOT/bin/git" <<GITSTUB
+#!/bin/sh
+case "\$*" in *"reset --hard"*) exit 1 ;; esac
+exec "$GIT_BIN" "\$@"
+GITSTUB
+chmod +x "$ROOT/bin/git"
+hash -r
+printf 'before-reset
+' >"$STATE_DIR/webhook.py"
+if reset_and_sync "$TARGET"; then
+  fail "reset failure must return non-zero"
+fi
+[ "$(cat "$STATE_DIR/webhook.py")" = "before-reset" ] || fail "reset failure must not sync deploy files"
+rm -f "$ROOT/bin/git"
+hash -r
+
+# --- 5. 同期失敗でも戻り値 0（デプロイを止めない） ---
 printf '#!/bin/sh\nexit 1\n' >"$ROOT/bin/install"
 chmod +x "$ROOT/bin/install"
 hash -r  # bash のコマンドパスキャッシュを捨ててスタブを使う
