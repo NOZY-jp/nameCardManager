@@ -158,6 +158,22 @@ reset_and_sync() {
   return 0
 }
 
+# 失敗時のロールバック。PREV へ戻れたことを確認できない場合は再ビルドしない。
+rollback_to() { # <prev> <target>
+  local prev="$1" target="$2"
+  if ! reset_and_sync "$prev"; then
+    log "=== rollback reset FAILED; manual action needed (production may run ${target:0:8}) ==="
+    return 1
+  fi
+  apply "$target" "$prev" || log "rollback build FAILED"
+  if wait_for_health; then
+    log "=== rollback done; production runs ${prev:0:8} ==="
+    return 0
+  fi
+  log "=== rollback also unhealthy; manual action needed ==="
+  return 1
+}
+
 # CI の状態を GitHub API から読む（public リポジトリなので認証不要）
 ci_state() {
   local sha="$1"
@@ -334,13 +350,7 @@ fi
 if [ "$FAILED" -ne 0 ]; then
   printf '%s %s\n' "$TARGET" "$(date +%s)" >"$STATE_DIR/failed-deploy"
   log "deploy failed; rolling back to ${PREV:0:8}"
-  reset_and_sync "$PREV" || log "rollback reset FAILED (files kept at $TARGET)"
-  apply "$TARGET" "$PREV" || log "rollback build FAILED"
-  if wait_for_health; then
-    log "=== rollback done; production runs ${PREV:0:8} ==="
-  else
-    log "=== rollback also unhealthy; manual action needed ==="
-  fi
+  rollback_to "$PREV" "$TARGET" || exit 1
   exit 1
 fi
 

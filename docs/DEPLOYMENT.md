@@ -277,6 +277,7 @@ systemctl --user enable --now namecard-webhook.service namecard-deploy.timer
 - 受信ポートは `127.0.0.1:8791` のみ。Cloudflare Tunnel を経由しない経路（nginx）には公開していない。
 - webhook が届かなかった場合に備えて **1 分おき**のタイマーが同じ `deploy.sh` を回す（`git fetch` のみで、変更が無ければ即終了）。
 - 同じコミットでデプロイに失敗した場合は、30 分間は同じコミットを再試行しない（`failed-deploy` に記録）。
+- ロールバックの `git reset` に失敗した場合は、旧コードへ戻った保証が無いため**再ビルドも health check も行わず**、`failed-deploy` を残したまま異常終了する（`rollback reset FAILED; manual action needed`）。
 - Docker の古いイメージは自動削除しない。ディスクが逼迫したら `docker image prune` を人の判断で実行する。
 
 ### OCR サービス（ocr-service）

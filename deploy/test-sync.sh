@@ -93,7 +93,18 @@ after="$(wc -l <"$SYSTEMCTL_LOG" 2>/dev/null || echo 0)"
 reset_and_sync "$OLD"
 [ "$(cat "$STATE_DIR/webhook.py")" = "old-worktree" ] || fail "rollback sync must install PREV files"
 
-# --- 4. reset が失敗したら同期しない（設置物だけ新しくなる不整合を防ぐ） ---
+# --- 4. 正常なロールバックは apply と health を実行して成功を返す ---
+APPLY_LOG="$ROOT/apply.log"
+HEALTH_LOG="$ROOT/health.log"
+apply() { echo "apply $*" >>"$APPLY_LOG"; return 0; }
+wait_for_health() { echo "health" >>"$HEALTH_LOG"; return 0; }
+if ! rollback_to "$OLD" "$TARGET"; then
+  fail "successful rollback must return 0"
+fi
+[ -s "$APPLY_LOG" ] || fail "rollback must rebuild PREV"
+[ -s "$HEALTH_LOG" ] || fail "rollback must check health"
+
+# --- 5. reset が失敗したら同期しない（設置物だけ新しくなる不整合を防ぐ） ---
 GIT_BIN="$(command -v git)"
 cat >"$ROOT/bin/git" <<GITSTUB
 #!/bin/sh
@@ -108,10 +119,23 @@ if reset_and_sync "$TARGET"; then
   fail "reset failure must return non-zero"
 fi
 [ "$(cat "$STATE_DIR/webhook.py")" = "before-reset" ] || fail "reset failure must not sync deploy files"
+
+# rollback 呼び出し側: reset 失敗では再ビルド・health をせず異常終了し、マーカーを残す
+printf '%s %s
+' "$TARGET" 0 >"$STATE_DIR/failed-deploy"
+apply_calls_before="$(wc -l <"$APPLY_LOG")"
+health_calls_before="$(wc -l <"$HEALTH_LOG")"
+if rollback_to "$TARGET" "$OLD"; then
+  fail "rollback must fail when reset fails"
+fi
+[ "$(wc -l <"$APPLY_LOG")" = "$apply_calls_before" ] || fail "rollback reset failure must not rebuild"
+[ "$(wc -l <"$HEALTH_LOG")" = "$health_calls_before" ] || fail "rollback reset failure must not check health"
+[ -s "$STATE_DIR/failed-deploy" ] || fail "rollback reset failure must keep failed-deploy marker"
+
 rm -f "$ROOT/bin/git"
 hash -r
 
-# --- 5. 同期失敗でも戻り値 0（デプロイを止めない） ---
+# --- 6. 同期失敗でも戻り値 0（デプロイを止めない） ---
 printf '#!/bin/sh\nexit 1\n' >"$ROOT/bin/install"
 chmod +x "$ROOT/bin/install"
 hash -r  # bash のコマンドパスキャッシュを捨ててスタブを使う
