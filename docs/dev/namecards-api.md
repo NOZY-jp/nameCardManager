@@ -20,11 +20,13 @@ FastAPI と並行稼働する Next.js 側の Route Handlers。認可は `src/lib
 ## 検索と pg_bigm
 
 - `LIKE`/`ILIKE` はこの PostgreSQL で `pg_bigm.gin_key_like` が未対応のため GIN 索引を使わない（実測: Seq Scan）。
-- そのため名刺のテキスト列は **`=%` 演算子**（pg_bigm）で検索する。列ごとに `UNION` して
-  `Bitmap Index Scan on ix_name_cards_*_bigm` を使う（`EXPLAIN (ANALYZE, BUFFERS)` で確認）。
+- 名刺のテキスト列は **`lower(col) =% lower($1)`** で検索する。`0001_add_lower_bigm_indexes.sql` が
+  `lower(col)` の GIN 索引（`gin_bigm_ops`）を追加し、列ごとに `UNION` して
+  `Bitmap Index Scan on ix_name_cards_*_lower_bigm` を使う。大小無視・かなカナ相互一致を維持する。
 - `contact_methods.value` は GIN 索引が無いため `ILIKE`（全走査）。
-- **差異**: `=%` は大文字小文字を区別するため、英字の氏名・メモは FastAPI の `ILIKE` と結果が
-  変わり得る（日本語は影響なし）。連絡先の検索は従来どおり大小無視。
+- ダミー 23 万件での実測: `lower(last_name) =% lower('rare')` → `Bitmap Index Scan on
+  ix_name_cards_last_name_lower_bigm`、Execution 5.4ms。`lower(last_name) =% lower('tanaka')`
+  （3万件ヒット）でも同 Index Scan で 30.3ms。`ILIKE` は Seq Scan。
 
 ## 既存 FastAPI との差異
 

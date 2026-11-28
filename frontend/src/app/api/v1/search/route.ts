@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, unauthorized } from "@/lib/auth/guard";
-import { serviceError, validationError } from "@/lib/namecards/http";
+import {
+  queryIssue,
+  serviceError,
+  validationResponse,
+} from "@/lib/namecards/http";
 import { searchNameCards } from "@/lib/namecards/service";
 import { parseCommaIds, parseDate } from "@/lib/namecards/validation";
 
@@ -18,16 +22,35 @@ export async function GET(request: Request): Promise<NextResponse> {
   const params = new URL(request.url).searchParams;
   const page = intParam(params.get("page"), 1);
   const perPage = intParam(params.get("per_page"), 20);
-  if (Number.isNaN(page) || page < 1)
-    return validationError("page must be >= 1");
+  if (Number.isNaN(page) || page < 1) {
+    return validationResponse(
+      queryIssue(
+        "page",
+        "greater_than_equal",
+        "Input should be greater than or equal to 1",
+      ),
+    );
+  }
   if (Number.isNaN(perPage) || perPage < 1 || perPage > 100) {
-    return validationError("per_page must be between 1 and 100");
+    return validationResponse(
+      queryIssue(
+        "per_page",
+        "less_than_equal",
+        "Input should be between 1 and 100",
+      ),
+    );
   }
   const tagIds = parseCommaIds(params.get("tag_ids"));
   const relationshipIds = parseCommaIds(params.get("relationship_ids"));
-  if (tagIds === null) return validationError("Invalid tag_ids value");
+  if (tagIds === null) {
+    return validationResponse(
+      queryIssue("tag_ids", "int_parsing", "Invalid ID value"),
+    );
+  }
   if (relationshipIds === null) {
-    return validationError("Invalid relationship_ids value");
+    return validationResponse(
+      queryIssue("relationship_ids", "int_parsing", "Invalid ID value"),
+    );
   }
 
   try {

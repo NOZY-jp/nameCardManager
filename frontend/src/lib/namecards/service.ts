@@ -528,15 +528,15 @@ export async function searchNameCards(userId: number, params: SearchParams) {
           const { hiragana, katakana } = normalizeKana(keyword);
           // OR を 1 本にまとめると GIN 索引が使われないため、列ごとの =% を UNION する。
           const branches = [
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND first_name =% ${keyword}`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND last_name =% ${keyword}`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND first_name_kana =% ${hiragana}`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND first_name_kana =% ${katakana}`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND last_name_kana =% ${hiragana}`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND last_name_kana =% ${katakana}`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND memo =% ${keyword}`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND met_notes =% ${keyword}`,
-            sql`SELECT nc_id FROM rel_tree WHERE name =% ${keyword}`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(first_name) =% lower(${keyword})`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(last_name) =% lower(${keyword})`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(first_name_kana) =% lower(${hiragana})`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(first_name_kana) =% lower(${katakana})`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(last_name_kana) =% lower(${hiragana})`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(last_name_kana) =% lower(${katakana})`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(memo) =% lower(${keyword})`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(met_notes) =% lower(${keyword})`,
+            sql`SELECT nc_id FROM rel_tree WHERE lower(name) =% lower(${keyword})`,
             sql`SELECT name_card_id FROM contact_methods WHERE value ILIKE ${`%${keyword}%`}`,
           ];
           return sql`AND nc.id IN (${sql.join(branches, sql` UNION `)})`;

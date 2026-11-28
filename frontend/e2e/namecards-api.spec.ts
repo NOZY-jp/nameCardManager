@@ -33,6 +33,39 @@ test.describe("名刺 API", () => {
     }
   });
 
+  test("検索は大小無視・かなカナ相互一致", async ({ request }) => {
+    await signup(request);
+    const ascii = await request.post("/api/v1/namecards", {
+      data: { last_name: "Tanaka", first_name: "Jiro" },
+    });
+    expect(ascii.status()).toBe(201);
+    const asciiCard = await ascii.json();
+
+    const kana = await request.post("/api/v1/namecards", {
+      data: { last_name: "たなか", last_name_kana: "タナカ" },
+    });
+    expect(kana.status()).toBe(201);
+    const kanaCard = await kana.json();
+
+    const asciiSearch = await request.get("/api/v1/search?q=tanaka");
+    expect(asciiSearch.status()).toBe(200);
+    const asciiHits = await asciiSearch.json();
+    expect(asciiHits.items.map((item: { id: number }) => item.id)).toContain(
+      asciiCard.id,
+    );
+
+    for (const query of ["タナカ", "たなか"]) {
+      const response = await request.get(
+        `/api/v1/search?q=${encodeURIComponent(query)}`,
+      );
+      expect(response.status()).toBe(200);
+      const hits = await response.json();
+      expect(hits.items.map((item: { id: number }) => item.id)).toContain(
+        kanaCard.id,
+      );
+    }
+  });
+
   test("登録 → 一覧 → 詳細 → 編集 → 検索 → 削除", async ({ request }) => {
     await signup(request);
     const marker = `検索${Date.now()}`;
@@ -124,6 +157,13 @@ test.describe("名刺 API", () => {
 
     const invalid = await request.post("/api/v1/namecards", { data: {} });
     expect(invalid.status()).toBe(422);
+    const invalidBody = await invalid.json();
+    expect(Array.isArray(invalidBody.detail)).toBe(true);
+    expect(invalidBody.detail[0]).toMatchObject({
+      type: expect.any(String),
+      loc: expect.any(Array),
+      msg: expect.any(String),
+    });
 
     const removed = await request.delete(`/api/v1/namecards/${card.id}`);
     expect(removed.status()).toBe(204);

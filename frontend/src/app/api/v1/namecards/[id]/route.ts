@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, unauthorized } from "@/lib/auth/guard";
-import { serviceError, validationError } from "@/lib/namecards/http";
+import {
+  queryIssue,
+  serviceError,
+  validationResponse,
+  zodIssues,
+} from "@/lib/namecards/http";
 import {
   deleteNameCard,
   getNameCard,
@@ -23,7 +28,11 @@ export async function GET(
   const user = await getCurrentUser(request);
   if (!user) return unauthorized();
   const id = parseId((await params).id);
-  if (id === null) return validationError("namecard id must be an integer");
+  if (id === null) {
+    return validationResponse(
+      queryIssue("id", "int_parsing", "Input should be a valid integer"),
+    );
+  }
   try {
     return NextResponse.json(await getNameCard(user.id, id));
   } catch (error) {
@@ -39,20 +48,23 @@ export async function PATCH(
   const user = await getCurrentUser(request);
   if (!user) return unauthorized();
   const id = parseId((await params).id);
-  if (id === null) return validationError("namecard id must be an integer");
+  if (id === null) {
+    return validationResponse(
+      queryIssue("id", "int_parsing", "Input should be a valid integer"),
+    );
+  }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return validationError("Invalid JSON body");
+    return validationResponse([
+      { type: "json_invalid", loc: ["body"], msg: "Invalid JSON body" },
+    ]);
   }
   const parsed = nameCardUpdateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { detail: parsed.error.issues.map((issue) => issue.message).join("; ") },
-      { status: 422 },
-    );
+    return validationResponse(zodIssues(parsed.error));
   }
   try {
     return NextResponse.json(
@@ -71,7 +83,11 @@ export async function DELETE(
   const user = await getCurrentUser(request);
   if (!user) return unauthorized();
   const id = parseId((await params).id);
-  if (id === null) return validationError("namecard id must be an integer");
+  if (id === null) {
+    return validationResponse(
+      queryIssue("id", "int_parsing", "Input should be a valid integer"),
+    );
+  }
   try {
     await deleteNameCard(user.id, id);
     return new NextResponse(null, { status: 204 });

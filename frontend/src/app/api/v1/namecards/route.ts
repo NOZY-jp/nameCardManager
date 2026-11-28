@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, unauthorized } from "@/lib/auth/guard";
-import { serviceError, validationError } from "@/lib/namecards/http";
+import {
+  queryIssue,
+  serviceError,
+  validationResponse,
+  zodIssues,
+} from "@/lib/namecards/http";
 import { createNameCard, listNameCards } from "@/lib/namecards/service";
 import {
   nameCardCreateSchema,
@@ -21,20 +26,41 @@ export async function GET(request: Request): Promise<NextResponse> {
   const params = new URL(request.url).searchParams;
   const page = intParam(params.get("page"), 1);
   const perPage = intParam(params.get("per_page"), 20);
-  if (Number.isNaN(page) || page < 1)
-    return validationError("page must be >= 1");
+  if (Number.isNaN(page) || page < 1) {
+    return validationResponse(
+      queryIssue(
+        "page",
+        "greater_than_equal",
+        "Input should be greater than or equal to 1",
+      ),
+    );
+  }
   if (Number.isNaN(perPage) || perPage < 1) {
-    return validationError("per_page must be >= 1");
+    return validationResponse(
+      queryIssue(
+        "per_page",
+        "greater_than_equal",
+        "Input should be greater than or equal to 1",
+      ),
+    );
   }
   const tagRaw = params.get("tag_id");
   const relRaw = params.get("relationship_id");
   const tagId = tagRaw === null ? undefined : Number(tagRaw);
   const relationshipId = relRaw === null ? undefined : Number(relRaw);
   if (tagId !== undefined && !Number.isInteger(tagId)) {
-    return validationError("tag_id must be an integer");
+    return validationResponse(
+      queryIssue("tag_id", "int_parsing", "Input should be a valid integer"),
+    );
   }
   if (relationshipId !== undefined && !Number.isInteger(relationshipId)) {
-    return validationError("relationship_id must be an integer");
+    return validationResponse(
+      queryIssue(
+        "relationship_id",
+        "int_parsing",
+        "Input should be a valid integer",
+      ),
+    );
   }
 
   try {
@@ -62,14 +88,13 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     body = await request.json();
   } catch {
-    return validationError("Invalid JSON body");
+    return validationResponse([
+      { type: "json_invalid", loc: ["body"], msg: "Invalid JSON body" },
+    ]);
   }
   const parsed = nameCardCreateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { detail: parsed.error.issues.map((issue) => issue.message).join("; ") },
-      { status: 422 },
-    );
+    return validationResponse(zodIssues(parsed.error));
   }
 
   try {
