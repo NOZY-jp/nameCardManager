@@ -201,11 +201,13 @@ nozyjp-server  namecard-webhook.service（systemd --user）
    └─ ~/namecard-deploy/deploy.sh
         1. CI の完了を待つ（GitHub API・最大 15 分。失敗なら中止）
         2. git reset --hard <sha>（.env / .env.prod / secrets/ は温存）
-        3. 差分のあるサービスだけ docker compose build
-        4. docker compose up -d --no-deps（稼働中＋ビルドしたサービス）
-        5. /health とフロントの応答を確認（最大 3 分）
-        6. backend を更新したときだけ alembic upgrade head
-        7. 失敗したら直前のコミットへ戻して再ビルド（自動ロールバック）
+        3. 対象コミットの deploy/ から webhook.py・install.sh・systemd unit を同期
+           （reset 成功時のみ。差分があるときだけ daemon-reload と webhook 再起動。失敗しても継続）
+        4. 差分のあるサービスだけ docker compose build
+        5. docker compose up -d --no-deps（稼働中＋ビルドしたサービス）
+        6. /health とフロントの応答を確認（最大 3 分）
+        7. backend を更新したときだけ alembic upgrade head
+        8. 失敗したら直前のコミットへ戻して再ビルド（自動ロールバック）
 ```
 
 | ファイル | 役割 |
@@ -213,14 +215,16 @@ nozyjp-server  namecard-webhook.service（systemd --user）
 | `deploy/webhook.py` | 受信（stdlib のみ）。`GET /health`、`POST /hook`。署名不一致は 403 |
 | `deploy/deploy.sh` | 反映本体。CI ゲート・差分ビルド・ヘルスチェック・ロールバック |
 | `deploy/systemd/` | `namecard-webhook.service`（常駐）、`namecard-deploy.{service,timer}`（1 分おきのフォールバック） |
-| `deploy/install.sh` | 設置。`~/namecard-deploy/` へ複製し、unit を有効化（**sudo 不要**） |
+| `deploy/install.sh` | 初回設置。`~/namecard-deploy/` へ複製し、unit を有効化（**sudo 不要**）。2 回目以降の差分は `deploy.sh` が自動同期する |
 
 ### 設置（初回のみ）
 
 ```bash
 ssh nozyjp
-~/nameCardManager/deploy/install.sh      # 2 回目以降はスクリプト更新の反映にも使う
+~/nameCardManager/deploy/install.sh      # 初回のみ（sudo 不要）
 ```
+
+以降、`deploy/webhook.py`・`deploy/install.sh`・`deploy/systemd/` の変更は **`deploy.sh` がデプロイ時に自動で同期**する（同期元は**反映対象コミット**の `deploy/`。checkout 前の古い作業ツリーは読まない。`git reset` が失敗したときは同期せず、設置物だけ新しくなる不整合を残さない）（CRLF は LF に正規化、差分があるときだけ `daemon-reload` と `namecard-webhook.service` の再起動、失敗はログのみでデプロイは継続）。`deploy.sh` 自身だけは実行中スクリプトを書き換えないため自動反映せず、差分を `deploy.log` に警告として出す。`deploy.sh` を更新したときだけ、その 1 回は `~/nameCardManager/deploy/install.sh` を手で実行する。
 
 設置後に必要な外側の設定（このリポジトリには保存しない）:
 
@@ -273,6 +277,7 @@ systemctl --user enable --now namecard-webhook.service namecard-deploy.timer
 - 受信ポートは `127.0.0.1:8791` のみ。Cloudflare Tunnel を経由しない経路（nginx）には公開していない。
 - webhook が届かなかった場合に備えて **1 分おき**のタイマーが同じ `deploy.sh` を回す（`git fetch` のみで、変更が無ければ即終了）。
 - 同じコミットでデプロイに失敗した場合は、30 分間は同じコミットを再試行しない（`failed-deploy` に記録）。
+- ロールバックは「PREV への reset 成功・apply（build と up）成功・health OK」が揃ったときだけ `rollback done` とする。reset 失敗時は再ビルドも health check も行わず、apply 失敗時は health check を行わず、どちらも `failed-deploy` を残したまま異常終了する（`rollback reset/apply FAILED; manual action needed`）。
 - Docker の古いイメージは自動削除しない。ディスクが逼迫したら `docker image prune` を人の判断で実行する。
 
 ### OCR サービス（ocr-service）

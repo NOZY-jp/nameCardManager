@@ -49,6 +49,136 @@ trap 'log "ERROR: line $LINENO failed (exit $?)"' ERR
 
 compose() { docker compose --project-directory "$APP_DIR" "$@"; }
 
+# ───── deploy/ の自動同期（webhook.py・install.sh・systemd unit） ─────
+# 実行中の deploy.sh 自身は書き換えない（bash が読みながら実行するため）。
+# deploy.sh に差分がある場合は警告ログだけ出し、次回 install.sh で反映する。
+sync_file() { # sync_file <src> <dst> <mode>; 0=更新 1=同一 2=失敗
+  local src="$1" dst="$2" mode="$3" tmp
+  if [ ! -f "$src" ]; then
+    log "sync: missing $src (skipped)"
+    return 2
+  fi
+  tmp=$(mktemp) || { log "sync: mktemp failed (skipped)"; return 2; }
+  if ! sed 's/\r$//' "$src" >"$tmp" 2>/dev/null; then
+    rm -f "$tmp"
+    log "sync: normalize failed: $src (skipped)"
+    return 2
+  fi
+  if [ -f "$dst" ] && cmp -s "$tmp" "$dst"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  if install -m "$mode" "$tmp" "$dst" 2>/dev/null; then
+    rm -f "$tmp"
+    log "sync: updated $dst"
+    return 0
+  fi
+  rm -f "$tmp"
+  log "sync: install failed: $dst (skipped)"
+  return 2
+}
+
+sync_deploy_files() {
+  # 同期元は必ず対象コミット（$TARGET）の deploy/。checkout 前の作業ツリーは読まない。
+  local target="${1:-}" unit_dir="$HOME/.config/systemd/user"
+  local webhook_changed=0 unit_changed=0 rc tmp rel name rest mode
+
+  if [ -z "$target" ]; then
+    log "sync: target is empty (skipped)"
+    return 0
+  fi
+  if ! git -C "$APP_DIR" rev-parse --verify --quiet "$target^{commit}" >/dev/null 2>&1; then
+    log "sync: unknown target $target (skipped)"
+    return 0
+  fi
+  mkdir -p "$STATE_DIR" "$unit_dir" 2>/dev/null || {
+    log "sync: cannot create target dirs (skipped)"
+    return 0
+  }
+  tmp=$(mktemp -d) || {
+    log "sync: mktemp failed (skipped)"
+    return 0
+  }
+
+  # <リポジトリ内パス>:<設置名>:<mode>。対象コミットに無いファイルは飛ばす。
+  for spec in     "deploy/webhook.py:webhook.py:0755"     "deploy/install.sh:install.sh:0755"     "deploy/systemd/namecard-webhook.service:namecard-webhook.service:0644"     "deploy/systemd/namecard-deploy.service:namecard-deploy.service:0644"     "deploy/systemd/namecard-deploy.timer:namecard-deploy.timer:0644"; do
+    rel="${spec%%:*}"
+    rest="${spec#*:}"
+    name="${rest%%:*}"
+    mode="${rest##*:}"
+    if ! git -C "$APP_DIR" cat-file -e "$target:$rel" 2>/dev/null; then
+      log "sync: $rel not in ${target:0:8} (skipped)"
+      continue
+    fi
+    if ! git -C "$APP_DIR" show "$target:$rel" >"$tmp/$name" 2>/dev/null; then
+      log "sync: cannot read $rel at ${target:0:8} (skipped)"
+      continue
+    fi
+    if [ "${name#namecard-}" != "$name" ]; then
+      rc=0
+      sync_file "$tmp/$name" "$unit_dir/$name" "$mode" || rc=$?
+      if [ "$rc" -eq 0 ]; then
+        unit_changed=1
+      fi
+    else
+      rc=0
+      sync_file "$tmp/$name" "$STATE_DIR/$name" "$mode" || rc=$?
+      if [ "$rc" -eq 0 ] && [ "$name" = "webhook.py" ]; then
+        webhook_changed=1
+      fi
+    fi
+  done
+
+  if [ "$unit_changed" -eq 1 ]; then
+    systemctl --user daemon-reload 2>/dev/null || log "sync: daemon-reload failed"
+  fi
+  if [ "$webhook_changed" -eq 1 ]; then
+    systemctl --user restart namecard-webhook.service 2>/dev/null || log "sync: webhook restart failed"
+  fi
+
+  # 実行中の deploy.sh 自身は書き換えない（差分の警告だけ出す）。
+  if [ -f "$STATE_DIR/deploy.sh" ]     && git -C "$APP_DIR" cat-file -e "$target:deploy/deploy.sh" 2>/dev/null; then
+    if ! git -C "$APP_DIR" show "$target:deploy/deploy.sh" 2>/dev/null | cmp -s - "$STATE_DIR/deploy.sh"; then
+      log "sync: deploy.sh differs; not applied while running (run bash $APP_DIR/deploy/install.sh to update)"
+    fi
+  fi
+
+  rm -rf "$tmp"
+  return 0
+}
+
+# reset が成功したときだけ同期する（失敗時に設置物だけ TARGET 版になる不整合を防ぐ）。
+reset_and_sync() {
+  local target="$1"
+  if ! git -C "$APP_DIR" reset --hard "$target"; then
+    log "git reset failed"
+    return 1
+  fi
+  sync_deploy_files "$target" || log "sync: unexpected failure (continuing)"
+  return 0
+}
+
+# 失敗時のロールバック。PREV へ戻れたことを確認できない場合は再ビルドしない。
+rollback_to() { # <prev> <target>
+  local prev="$1" target="$2"
+  if ! reset_and_sync "$prev"; then
+    log "=== rollback reset FAILED; manual action needed (production may run ${target:0:8}) ==="
+    return 1
+  fi
+  # 稼働版を確認する仕組みは無い（イメージに SHA を埋めておらず、起動時刻だけでは
+  # 旧版稼働を保証できない）。そのため apply（build と up）の成否を成功条件にする。
+  if ! apply "$target" "$prev"; then
+    log "=== rollback apply FAILED; manual action needed (production may run ${target:0:8}) ==="
+    return 1
+  fi
+  if wait_for_health; then
+    log "=== rollback done; production runs ${prev:0:8} ==="
+    return 0
+  fi
+  log "=== rollback also unhealthy; manual action needed ==="
+  return 1
+}
+
 # CI の状態を GitHub API から読む（public リポジトリなので認証不要）
 ci_state() {
   local sha="$1"
@@ -202,8 +332,10 @@ if [ -s "$STATE_DIR/failed-deploy" ]; then
 fi
 
 wait_for_ci "$TARGET" || { log "=== aborted before deploy ==="; exit 1; }
+
 git -C "$APP_DIR" checkout -q "$BRANCH" 2>/dev/null || true
-git -C "$APP_DIR" reset --hard "$TARGET" || { log "git reset failed"; exit 1; }
+# reset 成功後に、対象コミットの deploy/ を設置先へ同期する。
+reset_and_sync "$TARGET" || { log "git reset failed"; exit 1; }
 
 NEEDS_MIGRATION=0
 if echo "$(changed_services "$PREV" "$TARGET")" | grep -qx backend; then
@@ -223,13 +355,7 @@ fi
 if [ "$FAILED" -ne 0 ]; then
   printf '%s %s\n' "$TARGET" "$(date +%s)" >"$STATE_DIR/failed-deploy"
   log "deploy failed; rolling back to ${PREV:0:8}"
-  git -C "$APP_DIR" reset --hard "$PREV" || log "rollback reset FAILED"
-  apply "$TARGET" "$PREV" || log "rollback build FAILED"
-  if wait_for_health; then
-    log "=== rollback done; production runs ${PREV:0:8} ==="
-  else
-    log "=== rollback also unhealthy; manual action needed ==="
-  fi
+  rollback_to "$PREV" "$TARGET" || exit 1
   exit 1
 fi
 
