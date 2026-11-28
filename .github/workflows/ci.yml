@@ -68,7 +68,8 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 11
+          # バージョンは frontend/package.json の packageManager に合わせる（11.25.0）
+          package_json_file: frontend/package.json
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

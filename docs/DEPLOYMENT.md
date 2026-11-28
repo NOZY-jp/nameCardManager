@@ -14,6 +14,7 @@
 3. [環境変数](#環境変数)
 4. [nginx 設定](#nginx-設定)
 5. [ビルドと起動](#ビルドと起動)
+6. [自動デプロイ（CD）](#自動デプロイcd)
 6. [DB マイグレーション](#db-マイグレーション)
 7. [動作確認](#動作確認)
 8. [セキュリティ](#セキュリティ)
@@ -183,6 +184,79 @@ docker compose ps
 ```
 
 起動後の構成は `frontend`（`127.0.0.1:3001`→3000）、`backend`（`127.0.0.1:8000`）、`ocr`（`127.0.0.1:8100`）、`db`（`127.0.0.1:5432`）の4コンテナ。
+
+## 自動デプロイ（CD）
+
+`main` に push すると、**GitHub webhook → Cloudflare Tunnel → サーバー上の受信サービス**の順に伝わり、自動で本番へ反映される。GitHub の経路から SSH を開けず、sudo も不要。
+
+```
+git push origin main
+   │
+GitHub（webhook: push, HMAC-SHA256 署名）
+   │ HTTPS
+Cloudflare Tunnel  deploy.nozyjp.com → http://localhost:8791
+   │
+nozyjp-server  namecard-webhook.service（systemd --user）
+   │ 署名検証 → refs/heads/main のみ受理
+   └─ ~/namecard-deploy/deploy.sh
+        1. CI の完了を待つ（GitHub API・最大 15 分。失敗なら中止）
+        2. git reset --hard <sha>（.env / .env.prod / secrets/ は温存）
+        3. 差分のあるサービスだけ docker compose build
+        4. docker compose up -d --no-deps（稼働中＋ビルドしたサービス）
+        5. /health とフロントの応答を確認（最大 3 分）
+        6. backend を更新したときだけ alembic upgrade head
+        7. 失敗したら直前のコミットへ戻して再ビルド（自動ロールバック）
+```
+
+| ファイル | 役割 |
+| --- | --- |
+| `deploy/webhook.py` | 受信（stdlib のみ）。`GET /health`、`POST /hook`。署名不一致は 403 |
+| `deploy/deploy.sh` | 反映本体。CI ゲート・差分ビルド・ヘルスチェック・ロールバック |
+| `deploy/systemd/` | `namecard-webhook.service`（常駐）、`namecard-deploy.{service,timer}`（15 分おきのフォールバック） |
+| `deploy/install.sh` | 設置。`~/namecard-deploy/` へ複製し、unit を有効化（**sudo 不要**） |
+
+### 設置（初回のみ）
+
+```bash
+ssh nozyjp
+~/nameCardManager/deploy/install.sh      # 2 回目以降はスクリプト更新の反映にも使う
+```
+
+設置後に必要な外側の設定（このリポジトリには保存しない）:
+
+1. Cloudflare Tunnel の Public Hostname を追加: `deploy.nozyjp.com` → `http://localhost:8791`
+2. GitHub の Webhook を追加: Payload URL `https://deploy.nozyjp.com/hook`、Content type `application/json`、Secret は `~/namecard-deploy/webhook.secret` の値、イベントは `push` のみ
+
+### 運用
+
+```bash
+# 実行ログ（デプロイ本体 / 受信）
+tail -f ~/namecard-deploy/deploy.log
+journalctl --user -u namecard-webhook.service -f
+
+# 最後に成功したコミット
+cat ~/namecard-deploy/last-deploy
+
+# 手動でデプロイ（CI を待たない）
+SKIP_CI_CHECK=1 ~/namecard-deploy/deploy.sh
+
+# 差分が無くても再ビルド（Dockerfile や依存だけ変えたとき）
+FORCE_REBUILD=1 ~/namecard-deploy/deploy.sh
+
+# 一時停止 / 再開
+systemctl --user disable --now namecard-webhook.service namecard-deploy.timer
+systemctl --user enable --now namecard-webhook.service namecard-deploy.timer
+```
+
+### 注意点
+
+- **`main` への push がそのまま本番反映になる。** 問題があれば revert コミットを push する（それも自動反映される）。
+- CI が赤のコミットは反映されない（`ci_state` が `failure` で中止）。CI が動いていないコミットでも `pending` のまま 15 分で中止する。
+- `.env` / `.env.prod` / `secrets/` は未追跡なので `git reset --hard` で消えない。**追跡ファイルに秘密値を入れない**前提が崩れると即座に漏れる。
+- webhook のシークレットを変えるときは `openssl rand -hex 32 > ~/namecard-deploy/webhook.secret && chmod 600 ...` のあと、GitHub 側の Secret を更新して `systemctl --user restart namecard-webhook.service`。
+- 受信ポートは `127.0.0.1:8791` のみ。Cloudflare Tunnel を経由しない経路（nginx）には公開していない。
+- webhook が届かなかった場合に備えて 15 分おきのタイマーが同じ `deploy.sh` を回す（`OnBootSec`/`OnUnitActiveSec`）。
+- Docker の古いイメージは自動削除しない。ディスクが逼迫したら `docker image prune` を人の判断で実行する。
 
 ### OCR サービス（ocr-service）
 

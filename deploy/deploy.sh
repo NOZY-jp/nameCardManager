@@ -13,12 +13,16 @@
 # 環境変数:
 #   APP_DIR, STATE_DIR, REMOTE, BRANCH, REPO_SLUG, CI_TIMEOUT, HEALTH_TIMEOUT,
 #   SKIP_CI_CHECK=1（CI の完了を待たない）, FORCE_REBUILD=1（差分が無くても再ビルド）
+#
+# 注意: 関数を `func || failed=1` の形で呼ぶと set -e が効かなくなるため、
+#       関数内の各コマンドは明示的に `|| return 1` で判定している。
 set -Eeuo pipefail
 
 APP_DIR="${APP_DIR:-$HOME/nameCardManager}"
 STATE_DIR="${STATE_DIR:-$HOME/namecard-deploy}"
 LOG_FILE="$STATE_DIR/deploy.log"
 LOCK_FILE="$STATE_DIR/deploy.lock"
+STATE_FILE="$STATE_DIR/last-deploy"
 REMOTE="${REMOTE:-origin}"
 BRANCH="${BRANCH:-main}"
 REPO_SLUG="${REPO_SLUG:-NOZY-jp/nameCardManager}"
@@ -68,13 +72,16 @@ else:
 
 wait_for_ci() {
   local sha="$1" deadline state
-  [ "$SKIP_CI_CHECK" = "1" ] && { log "CI check skipped (SKIP_CI_CHECK=1)"; return 0; }
+  if [ "$SKIP_CI_CHECK" = "1" ]; then
+    log "CI check skipped (SKIP_CI_CHECK=1)"
+    return 0
+  fi
   deadline=$(( $(date +%s) + CI_TIMEOUT ))
   while :; do
     state=$(ci_state "$sha")
     case "$state" in
-      success) log "CI: success ($sha)"; return 0 ;;
-      failure) log "CI: failure ($sha) -> abort"; return 1 ;;
+      success) log "CI: success ($(echo "$sha" | cut -c1-8))"; return 0 ;;
+      failure) log "CI: failure ($(echo "$sha" | cut -c1-8)) -> abort"; return 1 ;;
     esac
     if [ "$(date +%s)" -ge "$deadline" ]; then
       log "CI: timeout after ${CI_TIMEOUT}s ($state) -> abort"
@@ -92,7 +99,7 @@ wait_for_health() {
   while :; do
     backend_code=$(http_code http://127.0.0.1:8000/health)
     frontend_code=$(http_code http://127.0.0.1:3001/)
-    if [ "$backend_code" = "200" ] && [ "${frontend_code:0:1}" = "2" -o "${frontend_code:0:1}" = "3" ]; then
+    if [ "$backend_code" = "200" ] && { [ "${frontend_code:0:1}" = "2" ] || [ "${frontend_code:0:1}" = "3" ]; }; then
       log "health: OK (backend=$backend_code frontend=$frontend_code)"
       return 0
     fi
@@ -104,16 +111,14 @@ wait_for_health() {
   done
 }
 
-# 変更されたパスから再ビルド対象のサービスを決める
+# 差分から再ビルド対象のサービスを決める
 changed_services() {
-  local from="$1" to="$2" files
-  files=$(git -C "$APP_DIR" diff --name-only "$from" "$to")
-  local services=()
-  local f
+  local from="$1" to="$2" files services=() f
+  files=$(git -C "$APP_DIR" diff --name-only "$from" "$to" 2>/dev/null || true)
   while IFS= read -r f; do
     [ -z "$f" ] && continue
     case "$f" in
-      frontend/*|pnpm-workspace.yaml|package.json) services+=("frontend") ;;
+      frontend/*|pnpm-workspace.yaml) services+=("frontend") ;;
       backend/*) services+=("backend") ;;
       ocr-service/*) services+=("ocr") ;;
       docker/postgres/*) services+=("db") ;;
@@ -124,28 +129,38 @@ changed_services() {
   printf '%s\n' "${services[@]+"${services[@]}"}" | awk 'NF && !seen[$0]++'
 }
 
+# 指定コミットのコードでイメージを作り直して起動する
 apply() {
-  local label="$1" prev_rev="$2" target_rev="$3"
-  local build_list
-  build_list=$(changed_services "$prev_rev" "$target_rev")
-  [ "$FORCE_REBUILD" = "1" ] && build_list=$'frontend\nbackend'
+  local from="$1" to="$2" build_list running up_list svc
+
+  build_list=$(changed_services "$from" "$to")
+  if [ "$FORCE_REBUILD" = "1" ]; then
+    build_list=$'frontend\nbackend'
+  fi
+  # 対象ブランチの構成ファイルが変わったら全サービス
+  if git -C "$APP_DIR" diff --name-only "$from" "$to" 2>/dev/null | grep -qxE 'docker-compose\.(yml|yaml)'; then
+    build_list=$'frontend\nbackend'
+  fi
 
   if [ -n "$build_list" ]; then
     log "build: $(echo "$build_list" | tr '\n' ' ')"
-    # shellcheck disable=SC2086
-    compose build $(echo "$build_list" | tr '\n' ' ')
+    for svc in $build_list; do
+      compose build "$svc" || { log "build FAILED: $svc"; return 1; }
+    done
   else
     log "build: no service changed"
   fi
 
   # 稼働中 + 今回ビルドしたサービスだけを起動（未使用の ocr を勝手に起こさない）
-  local running up_list
   running=$(compose ps --services --status running 2>/dev/null | sort -u)
   up_list=$(printf '%s\n%s\n' "$running" "$build_list" | awk 'NF && !seen[$0]++' | tr '\n' ' ')
   log "up: $up_list"
   # shellcheck disable=SC2086
-  compose up -d --no-deps $up_list
+  compose up -d --no-deps $up_list || { log "up FAILED"; return 1; }
+  return 0
 }
+
+# ---- main ----
 
 git -C "$APP_DIR" fetch --prune "$REMOTE" "+refs/heads/$BRANCH:refs/remotes/$REMOTE/$BRANCH" || {
   log "git fetch failed"; exit 1; }
@@ -157,54 +172,54 @@ else
   TARGET=$(git -C "$APP_DIR" rev-parse "$REMOTE/$BRANCH")
 fi
 PREV=$(git -C "$APP_DIR" rev-parse HEAD)
+LAST=""
+[ -s "$STATE_FILE" ] && LAST=$(awk '{print $1}' "$STATE_FILE")
 
 if ! git -C "$APP_DIR" merge-base --is-ancestor "$TARGET" "$REMOTE/$BRANCH" 2>/dev/null; then
   log "target $TARGET is not on $REMOTE/$BRANCH -> abort"; exit 1
 fi
 
-log "=== deploy ${TARGET:0:8} (current ${PREV:0:8}) ==="
+log "=== deploy ${TARGET:0:8} (checkout ${PREV:0:8}, last deployed ${LAST:0:8}) ==="
 
-if [ "$TARGET" = "$PREV" ]; then
-  log "already at target; health check only"
-  if wait_for_health; then
-    printf '%s %s\n' "$TARGET" "$(date '+%F %T')" >"$STATE_DIR/last-deploy"
-    log "=== done (no change) ==="; exit 0
-  fi
-  log "=== health check failed (no change) ==="; exit 1
+if [ "$TARGET" = "$PREV" ] && [ "$TARGET" = "$LAST" ]; then
+  log "already deployed; health check only"
+  wait_for_health || { log "=== health check failed (no change) ==="; exit 1; }
+  log "=== done (no change) ==="
+  exit 0
 fi
 
 wait_for_ci "$TARGET" || { log "=== aborted before deploy ==="; exit 1; }
 
-# 反映（detached HEAD ではなく main ブランチを進める）
 git -C "$APP_DIR" checkout -q "$BRANCH" 2>/dev/null || true
-git -C "$APP_DIR" reset --hard "$TARGET"
+git -C "$APP_DIR" reset --hard "$TARGET" || { log "git reset failed"; exit 1; }
 
-if apply "deploy" "$PREV" "$TARGET"; then
-  if ! wait_for_health; then
-    log "deploy failed; rolling back to ${PREV:0:8}"
-    git -C "$APP_DIR" reset --hard "$PREV"
-    apply "rollback" "$TARGET" "$PREV" || true
-    if wait_for_health; then
-      log "=== rollback done; production is on ${PREV:0:8} ==="
-    else
-      log "=== rollback also failed; manual action needed ==="
-    fi
-    exit 1
-  fi
+NEEDS_MIGRATION=0
+if echo "$(changed_services "$PREV" "$TARGET")" | grep -qx backend; then
+  NEEDS_MIGRATION=1
 fi
 
-# DB マイグレーション（backend を更新したときだけ）
-if printf '%s\n' "$(changed_services "$PREV" "$TARGET")" | grep -qx backend; then
+FAILED=0
+apply "$PREV" "$TARGET" || FAILED=1
+[ "$FAILED" -eq 0 ] && { wait_for_health || FAILED=1; }
+
+if [ "$FAILED" -eq 0 ] && [ "$NEEDS_MIGRATION" -eq 1 ]; then
   log "alembic: upgrade head"
-  compose exec -T backend alembic upgrade head || {
-    log "alembic failed -> rolling back"
-    git -C "$APP_DIR" reset --hard "$PREV"
-    apply "rollback" "$TARGET" "$PREV" || true
-    wait_for_health || log "rollback health check failed"
-    exit 1
-  }
+  compose exec -T backend alembic upgrade head || { log "alembic FAILED"; FAILED=1; }
+  [ "$FAILED" -eq 0 ] && { wait_for_health || FAILED=1; }
 fi
 
-printf '%s %s\n' "$TARGET" "$(date '+%F %T')" >"$STATE_DIR/last-deploy"
+if [ "$FAILED" -ne 0 ]; then
+  log "deploy failed; rolling back to ${PREV:0:8}"
+  git -C "$APP_DIR" reset --hard "$PREV" || log "rollback reset FAILED"
+  apply "$TARGET" "$PREV" || log "rollback build FAILED"
+  if wait_for_health; then
+    log "=== rollback done; production runs ${PREV:0:8} ==="
+  else
+    log "=== rollback also unhealthy; manual action needed ==="
+  fi
+  exit 1
+fi
+
+printf '%s %s\n' "$TARGET" "$(date '+%F %T')" >"$STATE_FILE"
 log "=== deployed ${TARGET:0:8} ==="
 compose ps
