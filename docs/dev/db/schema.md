@@ -203,7 +203,17 @@ erDiagram
 
 フィルタ: `tag_ids`、`relationship_ids`、`created_at` / `updated_at` の範囲、ページング、ソート（`created_at` / `updated_at` / 氏名など）。
 
-**計測結果（2026-11-27）**: `EXPLAIN` で `last_name ILIKE '%abc%'` を実行すると、`enable_seqscan=off` でも `Seq Scan` のままで GIN 索引は使われない。pg_bigm 1.2 の GIN 索引を `LIKE` で使うには `pg_bigm.gin_key_like=on` が必要だが、このサーバーでは当該パラメータが未登録（`LOAD 'pg_bigm'` 後も `unrecognized configuration parameter`）。現状の日本語検索は全走査で、`ix_*_bigm` は実質未使用。TS 移行時は (a) `pg_bigm.gin_key_like` を有効化できる版へ揃える、(b) `=%` 演算子を使う、(c) 別方式（`pg_trgm` + `gin_trgm_ops`、`textsearch_ja` など）へ替える、のいずれかを選ぶ。
+**計測結果（2026-11-27・旧 FastAPI 実装）**: `EXPLAIN` で `last_name ILIKE '%abc%'` を実行すると、
+`enable_seqscan=off` でも `Seq Scan` のままで GIN 索引は使われない。pg_bigm 1.2 の GIN 索引を
+`LIKE` で使うには `pg_bigm.gin_key_like=on` が必要だが、このサーバーでは当該パラメータが未登録
+（`LOAD 'pg_bigm'` 後も `unrecognized configuration parameter`）。現状の日本語検索は全走査で、
+`ix_*_bigm` は実質未使用。
+
+**TS 実装（Phase 3）の採用方式**: `pg_trgm` + `lower(col) LIKE '%' || lower($1) || '%'`。
+`lower(col)` の `gin_trgm_ops` 式索引 6 本を `0001_add_lower_trgm_indexes.sql` で追加する
+（新規環境のみ・本番は承認後）。`pg_bigm` の `=%` は類似度演算子で部分一致に使えないため不採用。
+1〜2 文字の検索語は結果は正しいが全走査になる。詳細は `docs/dev/namecards-api.md` と
+`docs/dev/db/drizzle.md`。既存の `ix_*_bigm` はスキーマ一致のため残す（検索には未使用）。
 
 ## データ量（2026-11-27 本番）
 

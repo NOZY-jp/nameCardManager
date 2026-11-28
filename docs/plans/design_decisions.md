@@ -187,13 +187,12 @@
 | **単純 LIKE（インデックスなし）** | ✅ | ✅ | ❌ | ゼロ | ゼロ |
 | **pg_bigm（bi-gram GIN）** | ✅ 完全 | ✅ インデックス効く | △ `bigm_similarity()` | 低（拡張1つ） | ゼロ |
 | **PGroonga（Groonga ベース）** | ✅ 最高 | ✅ | ✅ | 中（依存が多い） | REINDEX必要 |
-| **pg_trgm（trigram）** | ❌ 非対応 | — | — | — | — |
+| **pg_trgm（trigram）** | △ 部分一致可（3文字以上で索引） | ✅ | — | 低（拡張1つ） | ゼロ |
 | **Elasticsearch + Kuromoji** | ✅ 最高 | ✅ | ✅ | 高（別サービス） | 高（JVM 512MB+） |
 
-> **注意（2026-11-28 更新）**: この表は刷新前の検討時点のもの。Phase 3 では `pg_bigm.gin_key_like` が
-> 使えないため、大小無視の部分一致を索引付きで実現する目的で **`pg_trgm`（`lower(col)` + `gin_trgm_ops`）**
-> を採用した（`docs/dev/namecards-api.md`、`docs/dev/db/drizzle.md`）。日本語も `LIKE` で一致する
-> （E2E でかな・漢字を確認）。ただし trigram は 3 文字以上の検索語でだけ索引が効き、1〜2 文字は全走査になる。
+> **Phase 3 の確定（2026-11-28）**: 検索は **`pg_trgm`（`lower(col)` + `gin_trgm_ops`）+ `LIKE`** を採用した。
+> 正本は `docs/dev/namecards-api.md`、適用は `docs/dev/db/drizzle.md`。`pg_bigm` の `=%` は類似度演算子で
+> 部分一致に使えないため不採用。trigram は 3 文字以上で索引が効き、1〜2 文字は結果は正しいが全走査になる。
 
 #### 各選択肢の詳細
 

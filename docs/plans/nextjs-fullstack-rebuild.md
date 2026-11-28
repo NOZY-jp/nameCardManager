@@ -132,15 +132,23 @@ migrations/                                 # drizzle-kit + 手書き SQL
 - 名刺画像は個人情報。開発・テストはダミー画像のみ。ログに画像パス以上の情報を出さない。
 - 四隅座標の補正ロジック（`CameraOCRFlow` / `CornerSelector`）は純関数として切り出し、Vitest で単体テストを付ける。
 
-## 10. 検索
+## 10. 検索（Phase 3 で確定）
 
-現行の仕様（氏名・かな・メモ・出会い・所属階層・連絡先の横断、タグ/所属/日付フィルタ、ページング）を維持する。実装は次のいずれかを Phase 3 で確定する。
+現行の仕様（氏名・かな・メモ・出会い・所属階層・連絡先の横断、タグ/所属/日付フィルタ、ページング）を維持する。
+Phase 3 で検索方式を次のとおり確定した（詳細: `docs/dev/namecards-api.md`）。
 
-1. `pg_bigm` を活かす: `pg_bigm.gin_key_like` を有効化できる構成にする（現サーバーでは未登録のため要対応）
-2. `pg_bigm` の `=%` 演算子を使う（`LIKE` ではなく bigm 専用演算子で索引を使う）
-3. `pg_trgm` + `gin_trgm_ops` へ変更（日本語2文字検索の精度は低下するため非推奨）
-
-所属階層の検索は再帰 CTE を raw SQL で維持し、`EXPLAIN` で索引利用を確認してから完了とする。
+- 検索は **`lower(col) LIKE '%' || lower($1) || '%'`**。部分一致・大小無視で、`%` / `_` は
+  旧 `ILIKE` と同じワイルドカード。かな・カナは相互変換した両方の値で検索する。
+- 索引は **`pg_trgm` の `gin_trgm_ops`** による `lower(col)` の式索引 6 本
+  （`0001_add_lower_trgm_indexes.sql`。新規環境のみ適用、本番は承認後）。
+- `pg_bigm` の `=%` は**類似度演算子**（`bigm_similarity_op`、`similarity_limit` 0.3）で部分一致には
+  使えないため採用しない。既存の `pg_bigm` GIN 索引はスキーマ一致のために残すが、検索には使わない
+  （`pg_bigm.gin_key_like` がこの PostgreSQL では未対応のため `LIKE` でも索引は効かない）。
+- trigram は **3 文字以上**の検索語で索引が効く。1〜2 文字は**結果は正しいが全走査**になる
+  （精度の低下ではなく走査性能の差）。
+- 実測（ダミー 20 万件）: `lower(last_name) LIKE '%rare%'` → `Bitmap Index Scan`（1.24ms）。
+  3 万件ヒットする `%yamada%` は Seq Scan（全件近くに一致するため妥当）。
+- 所属階層の検索は再帰 CTE を raw SQL で維持し、`EXPLAIN` で索引利用を確認済み。
 
 ## 11. テストと CI
 
