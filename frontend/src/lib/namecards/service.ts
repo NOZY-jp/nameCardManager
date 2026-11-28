@@ -570,17 +570,7 @@ export async function searchNameCards(userId: number, params: SearchParams) {
     ? sql`AND nc.updated_at <= ${params.updatedAtEnd}`
     : sql``;
 
-  const rows = await db.execute(sql`
-    WITH RECURSIVE rel_tree AS (
-      SELECT ncr.name_card_id AS nc_id, r.id, r.parent_id, r.name
-      FROM name_card_relationships ncr
-      JOIN relationships r ON r.id = ncr.relationship_id
-      UNION ALL
-      SELECT rt.nc_id, r.id, r.parent_id, r.name
-      FROM rel_tree rt JOIN relationships r ON r.id = rt.parent_id
-    )
-    SELECT nc.*, count(*) OVER() AS total
-    FROM name_cards nc
+  const whereClause = sql`
     WHERE nc.user_id = ${userId}
     ${textFilter}
     ${tagFilter}
@@ -588,13 +578,45 @@ export async function searchNameCards(userId: number, params: SearchParams) {
     ${createdStart}
     ${createdEnd}
     ${updatedStart}
-    ${updatedEnd}
-    ORDER BY ${sql.raw(`nc.${sortName}`)} ${order}
-    LIMIT ${params.perPage} OFFSET ${(params.page - 1) * params.perPage}
-  `);
+    ${updatedEnd}`;
+
+  // 総件数は別クエリで数える（window count は結果 0 件のページで 0 になるため）。
+  const [rows, countRows] = await Promise.all([
+    db.execute(sql`
+      WITH RECURSIVE rel_tree AS (
+        SELECT ncr.name_card_id AS nc_id, r.id, r.parent_id, r.name
+        FROM name_card_relationships ncr
+        JOIN relationships r ON r.id = ncr.relationship_id
+        UNION ALL
+        SELECT rt.nc_id, r.id, r.parent_id, r.name
+        FROM rel_tree rt JOIN relationships r ON r.id = rt.parent_id
+      )
+      SELECT nc.*
+      FROM name_cards nc
+      ${whereClause}
+      ORDER BY ${sql.raw(`nc.${sortName}`)} ${order}
+      LIMIT ${params.perPage} OFFSET ${(params.page - 1) * params.perPage}
+    `),
+    db.execute(sql`
+      WITH RECURSIVE rel_tree AS (
+        SELECT ncr.name_card_id AS nc_id, r.id, r.parent_id, r.name
+        FROM name_card_relationships ncr
+        JOIN relationships r ON r.id = ncr.relationship_id
+        UNION ALL
+        SELECT rt.nc_id, r.id, r.parent_id, r.name
+        FROM rel_tree rt JOIN relationships r ON r.id = rt.parent_id
+      )
+      SELECT count(*)::int AS total
+      FROM name_cards nc
+      ${whereClause}
+    `),
+  ]);
+
+  const total = Number(
+    (countRows as unknown as Array<Record<string, unknown>>)[0]?.total ?? 0,
+  );
 
   const rawRows = rows as unknown as Array<Record<string, unknown>>;
-  const total = rawRows.length > 0 ? Number(rawRows[0].total ?? 0) : 0;
   const ids = rawRows.map((row) => Number(row.id));
   const base: BaseRow[] = [];
   if (ids.length > 0) {

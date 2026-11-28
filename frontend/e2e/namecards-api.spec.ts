@@ -47,14 +47,18 @@ test.describe("名刺 API", () => {
     expect(kana.status()).toBe(201);
     const kanaCard = await kana.json();
 
-    const asciiSearch = await request.get("/api/v1/search?q=tanaka");
-    expect(asciiSearch.status()).toBe(200);
-    const asciiHits = await asciiSearch.json();
-    expect(asciiHits.items.map((item: { id: number }) => item.id)).toContain(
-      asciiCard.id,
-    );
+    for (const query of ["tanaka", "ana", "TANAKA"]) {
+      const asciiSearch = await request.get(
+        `/api/v1/search?q=${encodeURIComponent(query)}`,
+      );
+      expect(asciiSearch.status()).toBe(200);
+      const asciiHits = await asciiSearch.json();
+      expect(asciiHits.items.map((item: { id: number }) => item.id)).toContain(
+        asciiCard.id,
+      );
+    }
 
-    for (const query of ["タナカ", "たなか"]) {
+    for (const query of ["タナカ", "たなか", "ナカ"]) {
       const response = await request.get(
         `/api/v1/search?q=${encodeURIComponent(query)}`,
       );
@@ -64,6 +68,28 @@ test.describe("名刺 API", () => {
         kanaCard.id,
       );
     }
+
+    // % はワイルドカードではなく文字として扱う
+    const literal = await request.post("/api/v1/namecards", {
+      data: { last_name: "記号", memo: "100%完了" },
+    });
+    expect(literal.status()).toBe(201);
+    const literalCard = await literal.json();
+    // "%" 単体はワイルドカードにならない（全件を返さない）
+    const percentSearch = await request.get("/api/v1/search?q=%25");
+    expect(percentSearch.status()).toBe(200);
+    const percentHits = await percentSearch.json();
+    const percentIds = percentHits.items.map((item: { id: number }) => item.id);
+    expect(percentIds).not.toContain(asciiCard.id);
+    expect(percentIds).not.toContain(kanaCard.id);
+
+    // % を含むカードでも、他の語（100）では通常どおり一致する
+    const literalSearch = await request.get("/api/v1/search?q=100");
+    expect(literalSearch.status()).toBe(200);
+    const literalHits = await literalSearch.json();
+    expect(literalHits.items.map((item: { id: number }) => item.id)).toContain(
+      literalCard.id,
+    );
   });
 
   test("登録 → 一覧 → 詳細 → 編集 → 検索 → 削除", async ({ request }) => {
@@ -75,6 +101,7 @@ test.describe("名刺 API", () => {
         last_name: marker,
         first_name: "太郎",
         company_name: "ダミー商事",
+        met_notes: "展示会で会った",
         contact_methods: [
           { type: "email", value: `${marker}@example.test`, is_primary: true },
         ],
@@ -128,6 +155,26 @@ test.describe("名刺 API", () => {
     expect(page2.total).toBeGreaterThanOrEqual(3);
     expect(page2.total_pages).toBe(Math.ceil(page2.total / 2));
     expect(page2.items.length).toBeLessThanOrEqual(2);
+    expect(page2.total).toBeGreaterThanOrEqual(3);
+
+    // 範囲外ページでも総件数は実件数のまま
+    const outOfRange = await request.get(
+      "/api/v1/namecards?page=999&per_page=2",
+    );
+    expect(outOfRange.status()).toBe(200);
+    const outOfRangeBody = await outOfRange.json();
+    expect(outOfRangeBody.items).toEqual([]);
+    expect(outOfRangeBody.total).toBe(page2.total);
+
+    // 最終ページの境界
+    const lastPage = await request.get(
+      `/api/v1/namecards?per_page=2&page=${page2.total_pages}`,
+    );
+    expect(lastPage.status()).toBe(200);
+    const lastPageBody = await lastPage.json();
+    expect(lastPageBody.total).toBe(page2.total);
+    expect(lastPageBody.items.length).toBeGreaterThan(0);
+    expect(lastPageBody.items.length).toBeLessThanOrEqual(2);
 
     const search = await request.get(
       `/api/v1/search?q=${encodeURIComponent(marker)}`,
@@ -139,6 +186,17 @@ test.describe("名刺 API", () => {
     );
     const hit = found.items.find((item: { id: number }) => item.id === card.id);
     expect(hit.image_path).toBe("dummy/front.webp");
+
+    for (const query of ["更新メモ", "展示会"]) {
+      const textSearch = await request.get(
+        `/api/v1/search?q=${encodeURIComponent(query)}`,
+      );
+      expect(textSearch.status()).toBe(200);
+      const textHits = await textSearch.json();
+      expect(textHits.items.map((item: { id: number }) => item.id)).toContain(
+        card.id,
+      );
+    }
 
     const byContact = await request.get(
       `/api/v1/search?q=${encodeURIComponent(`${marker}@example`)}`,
