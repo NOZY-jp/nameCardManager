@@ -199,15 +199,15 @@ Cloudflare Tunnel  deploy.nozyjp.com → http://localhost:8791
 nozyjp-server  namecard-webhook.service（systemd --user）
    │ 署名検証 → refs/heads/main のみ受理
    └─ ~/namecard-deploy/deploy.sh
-        0. deploy/ の webhook.py・install.sh・systemd unit を設置先へ同期
-           （差分があるときだけ daemon-reload と webhook 再起動。失敗しても継続）
         1. CI の完了を待つ（GitHub API・最大 15 分。失敗なら中止）
-        2. git reset --hard <sha>（.env / .env.prod / secrets/ は温存）
-        3. 差分のあるサービスだけ docker compose build
-        4. docker compose up -d --no-deps（稼働中＋ビルドしたサービス）
-        5. /health とフロントの応答を確認（最大 3 分）
-        6. backend を更新したときだけ alembic upgrade head
-        7. 失敗したら直前のコミットへ戻して再ビルド（自動ロールバック）
+        2. 対象コミットの deploy/ から webhook.py・install.sh・systemd unit を同期
+           （差分があるときだけ daemon-reload と webhook 再起動。失敗しても継続）
+        3. git reset --hard <sha>（.env / .env.prod / secrets/ は温存）
+        4. 差分のあるサービスだけ docker compose build
+        5. docker compose up -d --no-deps（稼働中＋ビルドしたサービス）
+        6. /health とフロントの応答を確認（最大 3 分）
+        7. backend を更新したときだけ alembic upgrade head
+        8. 失敗したら直前のコミットへ戻して再ビルド（自動ロールバック）
 ```
 
 | ファイル | 役割 |
@@ -224,7 +224,7 @@ ssh nozyjp
 ~/nameCardManager/deploy/install.sh      # 初回のみ（sudo 不要）
 ```
 
-以降、`deploy/webhook.py`・`deploy/install.sh`・`deploy/systemd/` の変更は **`deploy.sh` がデプロイ時に自動で同期**する（CRLF は LF に正規化、差分があるときだけ `daemon-reload` と `namecard-webhook.service` の再起動、失敗はログのみでデプロイは継続）。`deploy.sh` 自身だけは実行中スクリプトを書き換えないため自動反映せず、差分を `deploy.log` に警告として出す。`deploy.sh` を更新したときだけ、その 1 回は `~/nameCardManager/deploy/install.sh` を手で実行する。
+以降、`deploy/webhook.py`・`deploy/install.sh`・`deploy/systemd/` の変更は **`deploy.sh` がデプロイ時に自動で同期**する（同期元は**反映対象コミット**の `deploy/`。checkout 前の古い作業ツリーは読まない）（CRLF は LF に正規化、差分があるときだけ `daemon-reload` と `namecard-webhook.service` の再起動、失敗はログのみでデプロイは継続）。`deploy.sh` 自身だけは実行中スクリプトを書き換えないため自動反映せず、差分を `deploy.log` に警告として出す。`deploy.sh` を更新したときだけ、その 1 回は `~/nameCardManager/deploy/install.sh` を手で実行する。
 
 設置後に必要な外側の設定（このリポジトリには保存しない）:
 
