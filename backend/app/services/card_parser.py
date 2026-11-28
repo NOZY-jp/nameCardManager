@@ -206,6 +206,7 @@ _NAME_CHARS_RE = re.compile(
 _KANA_RE = re.compile(r"^[ァ-ヴー・\s]+$")
 _DIGIT_RE = re.compile(r"\d")
 _PHONE_CHARS_RE = re.compile(r"^[\d\-+()（）\s]+$")
+_PARENTHESIZED_RE = re.compile(r"^(.+?)\s*[(（]([^()（）]+)[)）]\s*$")
 
 # 連絡先の優先順位（先頭が is_primary になる）
 _CONTACT_PRIORITY = {
@@ -307,6 +308,16 @@ _CONTACT_LABEL_RE = re.compile(
         re.escape(label) for label in sorted(_ALL_CONTACT_LABELS, key=len, reverse=True)
     )
 )
+_WRAPPED_LABEL_RE = re.compile(
+    r"^(.*?)\s*("
+    + "|".join(
+        re.escape(label)
+        for label in sorted(
+            _TEL_LABELS + _FAX_LABELS + _MOBILE_LABELS, key=len, reverse=True
+        )
+    )
+    + r")\s*$"
+)
 
 
 def _split_contact_segments(line: str) -> list[str]:
@@ -333,6 +344,32 @@ def _split_contact_segments(line: str) -> list[str]:
     ]
     segments.append(line[matches[-1].start() :].strip())
     return [segment for segment in segments if segment]
+
+
+def _is_bare_phone(line: str) -> bool:
+    """行全体が電話番号だけか（ラベル無し）。"""
+    return bool(_PHONE_CHARS_RE.match(line)) and 10 <= len(_digits(line)) <= 11
+
+
+def _merge_wrapped_labels(lines: list[str]) -> list[str]:
+    """行末のラベルと次行の番号を結合する。
+
+    ``TEL 03-1111-2222 FAX`` の次行が ``03-3333-4444`` のとき、FAX の番号と
+    して結合する（ラベルだけの行でも同じ）。結合しないと種別が tel に
+    入れ替わってしまう。
+    """
+    merged: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        match = _WRAPPED_LABEL_RE.match(line)
+        if match and index + 1 < len(lines) and _is_bare_phone(lines[index + 1]):
+            merged.append(f"{line} {lines[index + 1]}")
+            index += 2
+            continue
+        merged.append(line)
+        index += 1
+    return merged
 
 
 def _labeled_contact(segment: str) -> tuple[str, str] | None:
@@ -568,7 +605,7 @@ def parse_card_text(lines: list[str], raw_text: str | None = None) -> dict[str, 
     if not cleaned and raw_text:
         cleaned = [_normalize(line) for line in raw_text.splitlines()]
         cleaned = [line for line in cleaned if line]
-    cleaned = _join_split_names(cleaned)
+    cleaned = _join_split_names(_merge_wrapped_labels(cleaned))
 
     contacts: list[dict[str, Any]] = []
     seen_contacts: set[str] = set()
@@ -715,6 +752,19 @@ def parse_card_text(lines: list[str], raw_text: str | None = None) -> dict[str, 
         if _KANA_RE.match(line):
             kana_candidates.append(line)
             continue
+        # 「山田 太郎(ヤマダ タロウ)」のように同一行にカナが括弧で並ぶ形
+        paren = _PARENTHESIZED_RE.match(line)
+        if paren:
+            base, reading = paren.group(1).strip(), paren.group(2).strip()
+            if (
+                _KANA_RE.match(reading)
+                and _NAME_CHARS_RE.match(base)
+                and not _DIGIT_RE.search(base)
+                and not any(word in base for word in COMPANY_KEYWORDS)
+            ):
+                name_candidates.append(base)
+                kana_candidates.append(reading)
+                continue
         if (
             _NAME_CHARS_RE.match(line)
             and not _DIGIT_RE.search(line)

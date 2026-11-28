@@ -347,3 +347,81 @@ def test_surname_only_line_is_not_joined_with_unrelated_line() -> None:
     assert result["last_name"] == "山田"
     assert result["first_name"] == ""
     assert result["position"] == "部長"
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  氏名＋フリガナが同一行（括弧書き）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+def test_name_with_fullwidth_parenthesized_kana() -> None:
+    """氏名の後ろに全角括弧でフリガナが並ぶ行も氏名として扱う。"""
+    result = card_parser.parse_card_text(
+        [
+            "株式会社サンプル商事",
+            "営業本部 部長",
+            "山田 太郎（ヤマダ タロウ）",
+            "TEL 03-1111-2222",
+        ]
+    )
+    assert result["last_name"] == "山田"
+    assert result["first_name"] == "太郎"
+    assert result["last_name_kana"] == "ヤマダ"
+    assert result["first_name_kana"] == "タロウ"
+    assert result["department"] == "営業本部"
+    assert result["position"] == "部長"
+    assert result["memo"] is None or "山田" not in result["memo"]
+
+
+def test_name_with_halfwidth_parenthesized_kana() -> None:
+    result = card_parser.parse_card_text(
+        ["合同会社テスト工業", "代表取締役", "高橋 龍之介(タカハシ リュウノスケ)"]
+    )
+    assert result["last_name"] == "高橋"
+    assert result["first_name"] == "龍之介"
+    assert result["last_name_kana"] == "タカハシ"
+    assert result["first_name_kana"] == "リュウノスケ"
+
+
+def test_parenthesized_kana_without_split_is_not_guessed() -> None:
+    """カナが 2 トークンに分かれない場合は推測せず、氏名だけ確定する。"""
+    result = card_parser.parse_card_text(["山田 太郎（ヤマダタロウ）"])
+    assert result["last_name"] == "山田"
+    assert result["first_name"] == "太郎"
+    assert result["last_name_kana"] is None
+    assert result["first_name_kana"] is None
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  ラベルだけの行・行末ラベルで番号が次行へ折り返す場合
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+def test_tel_line_ending_with_fax_label_wraps_number() -> None:
+    result = card_parser.parse_card_text(["TEL 03-1111-2222 FAX", "03-3333-4444"])
+    grouped = contacts_by_type(result)
+    assert grouped["tel"] == ["03-1111-2222"]
+    assert grouped["fax"] == ["03-3333-4444"]
+    assert result["memo"] is None or "FAX" not in result["memo"]
+
+
+def test_label_only_line_then_number() -> None:
+    result = card_parser.parse_card_text(["TEL 03-1111-2222", "FAX", "03-3333-4444"])
+    grouped = contacts_by_type(result)
+    assert grouped["tel"] == ["03-1111-2222"]
+    assert grouped["fax"] == ["03-3333-4444"]
+    assert result["memo"] is None or "FAX" not in result["memo"]
+
+
+def test_mobile_label_wrap_is_mobile() -> None:
+    result = card_parser.parse_card_text(
+        ["TEL 03-1111-2222", "Mobile", "090-1234-5678"]
+    )
+    grouped = contacts_by_type(result)
+    assert grouped["tel"] == ["03-1111-2222"]
+    assert grouped["mobile"] == ["090-1234-5678"]
+
+
+def test_dangling_label_without_number_is_kept_in_memo() -> None:
+    """番号が続かないラベル語は捨てず memo に残す。"""
+    result = card_parser.parse_card_text(["FAX", "担当: 山田"])
+    assert result["contact_methods"] == []
+    assert result["memo"] is not None
+    assert "FAX" in result["memo"]
+    assert "担当: 山田" in result["memo"]
