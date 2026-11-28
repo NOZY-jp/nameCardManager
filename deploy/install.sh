@@ -8,7 +8,7 @@
 #   1. deploy.sh / webhook.py / systemd unit を ~/namecard-deploy/ へ複製
 #      （git reset --hard で消えない場所に置き、実行中のスクリプトが書き換わらないようにする）
 #   2. webhook.secret が無ければ生成（600）
-#   3. systemd --user の unit を設置し、webhook 常駐と 15 分おきのフォールバック poll を有効化
+#   3. systemd --user の unit を設置し、webhook 常駐と 1 分おきのフォールバック poll を有効化
 #
 # 再実行しても安全。
 set -Eeuo pipefail

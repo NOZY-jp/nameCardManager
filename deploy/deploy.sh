@@ -49,6 +49,78 @@ trap 'log "ERROR: line $LINENO failed (exit $?)"' ERR
 
 compose() { docker compose --project-directory "$APP_DIR" "$@"; }
 
+# ───── deploy/ の自動同期（webhook.py・install.sh・systemd unit） ─────
+# 実行中の deploy.sh 自身は書き換えない（bash が読みながら実行するため）。
+# deploy.sh に差分がある場合は警告ログだけ出し、次回 install.sh で反映する。
+sync_file() { # sync_file <src> <dst> <mode>; 0=更新 1=同一 2=失敗
+  local src="$1" dst="$2" mode="$3" tmp
+  if [ ! -f "$src" ]; then
+    log "sync: missing $src (skipped)"
+    return 2
+  fi
+  tmp=$(mktemp) || { log "sync: mktemp failed (skipped)"; return 2; }
+  if ! sed 's/\r$//' "$src" >"$tmp" 2>/dev/null; then
+    rm -f "$tmp"
+    log "sync: normalize failed: $src (skipped)"
+    return 2
+  fi
+  if [ -f "$dst" ] && cmp -s "$tmp" "$dst"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  if install -m "$mode" "$tmp" "$dst" 2>/dev/null; then
+    rm -f "$tmp"
+    log "sync: updated $dst"
+    return 0
+  fi
+  rm -f "$tmp"
+  log "sync: install failed: $dst (skipped)"
+  return 2
+}
+
+sync_deploy_files() {
+  local src="$APP_DIR/deploy" unit_dir="$HOME/.config/systemd/user"
+  local webhook_changed=0 unit_changed=0 rc
+
+  if [ ! -d "$src" ]; then
+    log "sync: $src not found (skipped)"
+    return 0
+  fi
+  mkdir -p "$STATE_DIR" "$unit_dir" 2>/dev/null || {
+    log "sync: cannot create target dirs (skipped)"
+    return 0
+  }
+
+  for spec in "webhook.py:0755" "install.sh:0755"; do
+    rc=0
+    sync_file "$src/${spec%%:*}" "$STATE_DIR/${spec%%:*}" "${spec##*:}" || rc=$?
+    if [ "$rc" -eq 0 ] && [ "${spec%%:*}" = "webhook.py" ]; then
+      webhook_changed=1
+    fi
+  done
+
+  for unit in namecard-webhook.service namecard-deploy.service namecard-deploy.timer; do
+    rc=0
+    sync_file "$src/systemd/$unit" "$unit_dir/$unit" 0644 || rc=$?
+    if [ "$rc" -eq 0 ]; then
+      unit_changed=1
+    fi
+  done
+
+  if [ "$unit_changed" -eq 1 ]; then
+    systemctl --user daemon-reload 2>/dev/null || log "sync: daemon-reload failed"
+  fi
+  if [ "$webhook_changed" -eq 1 ]; then
+    systemctl --user restart namecard-webhook.service 2>/dev/null || log "sync: webhook restart failed"
+  fi
+
+  if [ -f "$src/deploy.sh" ] && [ -f "$STATE_DIR/deploy.sh" ] \
+    && ! cmp -s <(sed 's/\r$//' "$src/deploy.sh") "$STATE_DIR/deploy.sh"; then
+    log "sync: deploy.sh differs; not applied while running (run bash $src/install.sh to update)"
+  fi
+  return 0
+}
+
 # CI の状態を GitHub API から読む（public リポジトリなので認証不要）
 ci_state() {
   local sha="$1"
@@ -162,6 +234,10 @@ apply() {
   compose up -d --no-deps $up_list || { log "up FAILED"; return 1; }
   return 0
 }
+
+# 設定ファイル（webhook.py・install.sh・unit）をリポジトリの deploy/ に揃える。
+# 失敗してもデプロイ本体は止めない（ログに残すだけ）。
+sync_deploy_files || log "sync: unexpected failure (continuing)"
 
 # ---- main ----
 
