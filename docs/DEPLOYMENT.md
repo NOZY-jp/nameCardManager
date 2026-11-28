@@ -212,7 +212,7 @@ nozyjp-server  namecard-webhook.service（systemd --user）
 | --- | --- |
 | `deploy/webhook.py` | 受信（stdlib のみ）。`GET /health`、`POST /hook`。署名不一致は 403 |
 | `deploy/deploy.sh` | 反映本体。CI ゲート・差分ビルド・ヘルスチェック・ロールバック |
-| `deploy/systemd/` | `namecard-webhook.service`（常駐）、`namecard-deploy.{service,timer}`（15 分おきのフォールバック） |
+| `deploy/systemd/` | `namecard-webhook.service`（常駐）、`namecard-deploy.{service,timer}`（1 分おきのフォールバック） |
 | `deploy/install.sh` | 設置。`~/namecard-deploy/` へ複製し、unit を有効化（**sudo 不要**） |
 
 ### 設置（初回のみ）
@@ -255,7 +255,8 @@ systemctl --user enable --now namecard-webhook.service namecard-deploy.timer
 - `.env` / `.env.prod` / `secrets/` は未追跡なので `git reset --hard` で消えない。**追跡ファイルに秘密値を入れない**前提が崩れると即座に漏れる。
 - webhook のシークレットを変えるときは `openssl rand -hex 32 > ~/namecard-deploy/webhook.secret && chmod 600 ...` のあと、GitHub 側の Secret を更新して `systemctl --user restart namecard-webhook.service`。
 - 受信ポートは `127.0.0.1:8791` のみ。Cloudflare Tunnel を経由しない経路（nginx）には公開していない。
-- webhook が届かなかった場合に備えて 15 分おきのタイマーが同じ `deploy.sh` を回す（`OnBootSec`/`OnUnitActiveSec`）。
+- webhook が届かなかった場合に備えて **1 分おき**のタイマーが同じ `deploy.sh` を回す（`git fetch` のみで、変更が無ければ即終了）。
+- 同じコミットでデプロイに失敗した場合は、30 分間は同じコミットを再試行しない（`failed-deploy` に記録）。
 - Docker の古いイメージは自動削除しない。ディスクが逼迫したら `docker image prune` を人の判断で実行する。
 
 ### OCR サービス（ocr-service）

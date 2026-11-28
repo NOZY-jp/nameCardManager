@@ -28,6 +28,7 @@ BRANCH="${BRANCH:-main}"
 REPO_SLUG="${REPO_SLUG:-NOZY-jp/nameCardManager}"
 CI_TIMEOUT="${CI_TIMEOUT:-900}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
+RETRY_COOLDOWN="${RETRY_COOLDOWN:-1800}"
 SKIP_CI_CHECK="${SKIP_CI_CHECK:-0}"
 FORCE_REBUILD="${FORCE_REBUILD:-0}"
 
@@ -188,8 +189,17 @@ if [ "$TARGET" = "$PREV" ] && [ "$TARGET" = "$LAST" ]; then
   exit 0
 fi
 
-wait_for_ci "$TARGET" || { log "=== aborted before deploy ==="; exit 1; }
+# 同じコミットの失敗を短時間に繰り返さない（1 分ポーリング対策）
+if [ -s "$STATE_DIR/failed-deploy" ]; then
+  failed_sha=$(awk '{print $1}' "$STATE_DIR/failed-deploy")
+  failed_at=$(awk '{print $2}' "$STATE_DIR/failed-deploy")
+  if [ "$failed_sha" = "$TARGET" ] && [ $(( $(date +%s) - ${failed_at:-0} )) -lt "$RETRY_COOLDOWN" ]; then
+    log "== $TARGET already failed recently; retry suppressed for ${RETRY_COOLDOWN}s =="
+    exit 0
+  fi
+fi
 
+wait_for_ci "$TARGET" || { log "=== aborted before deploy ==="; exit 1; }
 git -C "$APP_DIR" checkout -q "$BRANCH" 2>/dev/null || true
 git -C "$APP_DIR" reset --hard "$TARGET" || { log "git reset failed"; exit 1; }
 
@@ -209,6 +219,7 @@ if [ "$FAILED" -eq 0 ] && [ "$NEEDS_MIGRATION" -eq 1 ]; then
 fi
 
 if [ "$FAILED" -ne 0 ]; then
+  printf '%s %s\n' "$TARGET" "$(date +%s)" >"$STATE_DIR/failed-deploy"
   log "deploy failed; rolling back to ${PREV:0:8}"
   git -C "$APP_DIR" reset --hard "$PREV" || log "rollback reset FAILED"
   apply "$TARGET" "$PREV" || log "rollback build FAILED"
@@ -221,5 +232,6 @@ if [ "$FAILED" -ne 0 ]; then
 fi
 
 printf '%s %s\n' "$TARGET" "$(date '+%F %T')" >"$STATE_FILE"
+rm -f "$STATE_DIR/failed-deploy"
 log "=== deployed ${TARGET:0:8} ==="
 compose ps
