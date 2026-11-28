@@ -19,6 +19,8 @@ COPY . .
 CMD ["pnpm", "dev"]
 
 FROM base AS builder
+# ROLLBACK PROBE: 意図的にビルドを失敗させる（自動ロールバックの実地検証用・直後に revert する）
+RUN false
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
