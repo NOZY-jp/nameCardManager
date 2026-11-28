@@ -8,7 +8,8 @@ RUN corepack enable && corepack prepare pnpm@11.25.0 --activate
 
 FROM base AS deps
 WORKDIR /app
-COPY package.json pnpm-lock.yaml* ./
+# pnpm-workspace.yaml の allowBuilds（sharp / esbuild などの build script 許可）も必要
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 FROM base AS dev
