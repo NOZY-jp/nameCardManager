@@ -15,8 +15,10 @@ Phase 3 までと同様、FastAPI と並行稼働する Next.js 側の Route Han
 | POST | `/api/v1/namecards/{id}/images` | 画像レコード追加（201） |
 | PUT/DELETE | `/api/v1/namecards/{id}/images/{imageId}` | 差し替え / 削除（削除後 position 再計算） |
 
-- アップロードは JPEG / PNG / WebP、**10MB まで**（nginx の `client_max_body_size 10M` に合わせる）。
+- アップロードは JPEG / PNG / WebP、**10MB まで**（アプリ側は固定値。環境変数では変えられない）。
   `Content-Length` と読み取り中の両方で上限を判定し、超過は 413。不正形式は 422。
+- **現行の本番 nginx は `client_max_body_size` 未指定＝既定 1M** のため、10MB を通すには Phase 6 で
+  `client_max_body_size 10M;` を `name_nozyjp` の server ブロックへ追加する（サーバー設定変更のため要承認）。
 - 一時保持はプロセス内に TTL 30 分・最大 200 件・合計 200MB・ユーザーあたり 20 件。超過時は最古を追い出す。
 - 未認証は 401、他ユーザーの名刺・画像は 404（存在を漏らさない）。
 
