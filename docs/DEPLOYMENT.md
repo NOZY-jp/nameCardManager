@@ -185,7 +185,7 @@ Next.js 単一アプリへの刷新（`docs/plans/nextjs-fullstack-rebuild.md`�
 
 この表には変数名と公開設定値だけを書き、接続文字列の実値・パスワード・鍵・トークン・Webhook Secret は書かない（実値は `secrets/` と `.env*` にだけ置く）。
 
-`.env` / `.env.prod` / `secrets/` は未追跡で、`git reset --hard` でも消えない。新旧で同じ意味の変数を次のように対応させる（変数名だけの対応表。値・鍵の中身はリポジトリに置かない）。
+`.env` / `.env.prod` / `secrets/` は未追跡で、`git reset --hard` でも消えない。新旧で同じ意味の変数を次のように対応させる（変数名と公開設定値の対応表。接続文字列の実値・鍵の中身はリポジトリに置かない）。
 
 | 用途 | 現行 FastAPI | 新 Next.js | 備考 |
 | --- | --- | --- | --- |
