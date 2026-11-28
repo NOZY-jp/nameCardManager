@@ -24,6 +24,7 @@
     "db:rollback:0001": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f drizzle/0001_add_lower_trgm_indexes.down.sql"
   },
   "dependencies": {
+    "@google/genai": "^3.6.1",
     "@hookform/resolvers": "^3.10.0",
     "axios": "^1.13.6",
     "bcryptjs": "^3.0.3",
@@ -38,6 +39,7 @@
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.2",
     "sass": "^1.97.3",
+    "sharp": "^0.35.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {
