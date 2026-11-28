@@ -1,5 +1,10 @@
 # 名刺管理システム - 統合テストレポート
 
+> **検索方式の注記（2026-11-28）**: 本文は当時の計画・記録です。現行の検索は `pg_trgm` + `lower(col) LIKE '%q%'` で、
+> `pg_bigm` の GIN 索引はスキーマ一致のため残しているが検索には使っていません。
+> 正本: `docs/dev/namecards-api.md` / `docs/plans/nextjs-fullstack-rebuild.md` §10。
+
+
 ## 1. テスト概要
 
 | 項目 | 内容 |

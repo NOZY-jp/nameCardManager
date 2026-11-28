@@ -176,7 +176,11 @@
 
 ---
 
-### 3. 検索・フィルタリング
+### 3. 検索・フィルタリング（2026-11-28 以前の検討記録）
+
+> **この節は刷新前（初期実装）の検討記録。** 現行の検索は `pg_trgm` + `lower(col) LIKE '%q%'`
+> （`docs/plans/nextjs-fullstack-rebuild.md` §10、`docs/dev/namecards-api.md` が正本）。`pg_bigm` の
+> GIN 索引は既存スキーマ一致のため残しているが検索には使わない。以下の「pg_bigm 推奨・決定」は当時の判断。
 
 日本語を含む名刺データの検索方法。
 
@@ -268,9 +272,9 @@ LIMIT 20;
 
 ローマ字検索が必要なら、`*_romaji` カラムを追加し Python `pykakasi` でカナ→ローマ字変換を insert/update 時に実行。
 
-#### 🎯 決定事項
+#### 🎯 決定事項（当時）
 
-**Phase 1 から pg_bigm を導入**
+**Phase 1 から pg_bigm を導入**（2026-11-28 以前の判断。現在の検索は `pg_trgm` + `LIKE`）
 
 理由:
 1. CJK 部分一致の最適解で、クラッシュセーフ（GIN ベース）
@@ -691,7 +695,7 @@ Google Contacts CSV フォーマットを第一対応とする（最もメジャ
 | 四隅選択 UI | SVG overlay（フロント） | ユーザーが名刺の四隅を手動選択 |
 | 遠近補正 | OpenCV（バックエンド） | `cv2.getPerspectiveTransform` + `cv2.warpPerspective` |
 | カメラガイド枠 | フロントエンド | 撮影画面に名刺サイズの枠を表示 |
-| 検索 | pg_bigm (GIN)（Phase 1） | CJK 最適化、クラッシュセーフ、低運用コスト |
+| 検索 | pg_bigm (GIN)（Phase 1・当時） | 現在は `pg_trgm` + `lower() LIKE`（§10 参照）。pg_bigm 索引はスキーマ一致のため残置 |
 | DB マイグレーション | Alembic | スキーマ変更の追跡・ロールバック |
 | 画像フォーマット | WebP (quality 80) | JPEG 比 30% 小、全ブラウザ対応 |
 | エクスポート | CSV（Phase 1）、vCard 3.0（将来） | CSV は最大互換性、vCard は将来対応 |

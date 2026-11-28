@@ -30,7 +30,11 @@
 
 ### company_name / department / position の扱い
 
-`a70d42ed3c54` で `name_cards` に追加され、**現在も存在する**（`String(200)`、NULL 可）。旧版の本ドキュメントには「Relationship が包含するため不要」とあったが、実装は両方を保持している。OCR 結果の一時保存先として使い、Relationship とは独立に編集できる。TS 移行時もこの二重管理をそのまま引き継ぐか、どちらかへ寄せるかを決める必要がある（`docs/plans/nextjs-fullstack-rebuild.md` の未決事項）。
+`a70d42ed3c54` で `name_cards` に追加され、**現在も存在する**（`String(200)`、NULL 可）。旧版の本ドキュメントには「Relationship が包含するため不要」とあったが、実装は両方を保持している。OCR 結果の一時保存先として使い、Relationship とは独立に編集できる。
+
+**決定（Issue #8）: この二重管理は現行のまま維持する。** データ移行をしない前提では、正規化による事故リスクが
+重複のコストを上回るため。Phase 5 で扱うのは既存 JSON / CSV の入出力互換だけで、正規化（どちらかへの統合）は
+行わない（`docs/plans/nextjs-fullstack-rebuild.md` §15 の決定 5）。
 
 ## ER 図
 
