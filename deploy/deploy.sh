@@ -181,8 +181,8 @@ rollback_to() { # <prev> <target>
 
 # CI の状態を GitHub API から読む（public リポジトリなので認証不要）
 ci_state() {
-  local sha="$1"
-  curl -fsS -m 15 -H 'Accept: application/vnd.github+json' \
+  local sha="$1" raw state detail
+  raw=$(curl -fsS -m 15 -H 'Accept: application/vnd.github+json' \
     "https://api.github.com/repos/$REPO_SLUG/commits/$sha/check-runs?per_page=100" 2>/dev/null \
     | python3 -c '
 import json, sys
@@ -207,7 +207,16 @@ elif all(c == "success" for c in conclusions):
 else:
     other = next((c for c in conclusions if c != "success"), "pending")
     print("pending", other)
-' || echo 'unknown unknown'
+' 2>/dev/null || true)
+  # curl / python のどちらが失敗しても 1 行（状態 実結論）に揃える
+  state=$(printf '%s\n' "$raw" | awk 'NR==1 {print $1}')
+  detail=$(printf '%s\n' "$raw" | awk 'NR==1 {print $2}')
+  printf '%s %s\n' "${state:-unknown}" "${detail:-unknown}"
+}
+
+# CI が成功しないまま諦めたことを failed-deploy に残す（sha 単位でクールダウンする）。
+record_ci_give_up() { # <sha> <reason>
+  printf '%s %s %s\n' "$1" "$(date +%s)" "$2" >"$STATE_DIR/failed-deploy"
 }
 
 wait_for_ci() {
@@ -216,6 +225,7 @@ wait_for_ci() {
     log "CI check skipped (SKIP_CI_CHECK=1)"
     return 0
   fi
+  # CI_TIMEOUT(900s) < RETRY_COOLDOWN(1800s): 待機しすぎず、次の再試行まで間を空ける。
   deadline=$(( $(date +%s) + CI_TIMEOUT ))
   while :; do
     result=$(ci_state "$sha")
@@ -225,7 +235,11 @@ wait_for_ci() {
     [ "$detail" = "$state" ] && note="$state"
     case "$state" in
       success) log "CI: success ($(echo "$sha" | cut -c1-8))"; return 0 ;;
-      failure) log "CI: failure ($(echo "$sha" | cut -c1-8)) -> abort"; return 1 ;;
+      failure)
+        log "CI: failure ($(echo "$sha" | cut -c1-8)) -> abort; retry suppressed for ${RETRY_COOLDOWN}s"
+        record_ci_give_up "$sha" "ci-failure"
+        return 1
+        ;;
     esac
     # 実際の結論（cancelled / stale など）を出し、同じ結論の連続ログは省く。
     if [ "$note" != "$last_note" ]; then
@@ -233,7 +247,8 @@ wait_for_ci() {
       last_note="$note"
     fi
     if [ "$(date +%s)" -ge "$deadline" ]; then
-      log "CI: timeout after ${CI_TIMEOUT}s ($note) -> abort"
+      log "=== CI not successful ($note) after ${CI_TIMEOUT}s; retry suppressed for ${RETRY_COOLDOWN}s ==="
+      record_ci_give_up "$sha" "ci-$note"
       return 1
     fi
     sleep 20
@@ -339,14 +354,35 @@ if [ "$TARGET" = "$PREV" ] && [ "$TARGET" = "$LAST" ] && [ "$FORCE_REBUILD" = "0
   exit 0
 fi
 
-# 同じコミットの失敗を短時間に繰り返さない（1 分ポーリング対策）
-if [ -s "$STATE_DIR/failed-deploy" ]; then
-  failed_sha=$(awk '{print $1}' "$STATE_DIR/failed-deploy")
-  failed_at=$(awk '{print $2}' "$STATE_DIR/failed-deploy")
-  if [ "$failed_sha" = "$TARGET" ] && [ $(( $(date +%s) - ${failed_at:-0} )) -lt "$RETRY_COOLDOWN" ]; then
-    log "== $TARGET already failed recently; retry suppressed for ${RETRY_COOLDOWN}s =="
-    exit 0
+# 同じコミットの失敗を短時間に繰り返さない（1 分ポーリング対策）。
+# マーカーは sha 単位なので、main が進めば別 sha として通常どおりデプロイされる。
+# 戻り値: 0=クールダウン中で抑制, 1=CI 失敗の再試行を待たず中止, 2=通常続行
+retry_suppressed() { # <sha>
+  local sha="$1" failed_sha failed_at reason age
+  [ -s "$STATE_DIR/failed-deploy" ] || return 2
+  read -r failed_sha failed_at reason <"$STATE_DIR/failed-deploy" || true
+  [ "$failed_sha" = "$sha" ] || return 2
+  age=$(( $(date +%s) - ${failed_at:-0} ))
+  if [ "$age" -lt "$RETRY_COOLDOWN" ]; then
+    log "== $sha already failed recently; retry suppressed for ${RETRY_COOLDOWN}s =="
+    return 0
   fi
+  case "${reason:-deploy}" in
+    ci-*)
+      # 2 回目以降は 900 秒待たずに中止し、マーカーの時刻だけ更新する。
+      log "=== CI not successful (${reason#ci-}) on retry; not waiting again; retry suppressed for ${RETRY_COOLDOWN}s ==="
+      printf '%s %s %s\n' "$sha" "$(date +%s)" "$reason" >"$STATE_DIR/failed-deploy"
+      return 1
+      ;;
+  esac
+  return 2
+}
+
+if retry_suppressed "$TARGET"; then
+  exit 0
+else
+  rc=$?
+  if [ "$rc" -eq 1 ]; then exit 1; fi
 fi
 
 wait_for_ci "$TARGET" || { log "=== aborted before deploy ==="; exit 1; }
@@ -371,7 +407,7 @@ if [ "$FAILED" -eq 0 ] && [ "$NEEDS_MIGRATION" -eq 1 ]; then
 fi
 
 if [ "$FAILED" -ne 0 ]; then
-  printf '%s %s\n' "$TARGET" "$(date +%s)" >"$STATE_DIR/failed-deploy"
+  printf '%s %s %s\n' "$TARGET" "$(date +%s)" deploy >"$STATE_DIR/failed-deploy"
   log "deploy failed; rolling back to ${PREV:0:8}"
   rollback_to "$PREV" "$TARGET" || exit 1
   exit 1
