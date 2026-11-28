@@ -5,6 +5,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
+import postgres from "postgres";
 import sharp from "sharp";
 
 const PASSWORD = "DummyPass123!";
@@ -211,5 +212,26 @@ test.describe("画像 API", () => {
     );
     expect(servedThumb.status()).toBe(200);
     expect((await servedThumb.body()).equals(thumb)).toBe(true);
+
+    // 解決できない image_path（外部絶対・traversal）は実ファイルを返さず白い WebP 200
+    const sql = postgres(process.env.DATABASE_URL as string);
+    try {
+      for (const badPath of ["/etc/passwd", "../../frontend/package.json"]) {
+        const [row] = await sql<{ id: number }[]>`
+          insert into name_card_images (name_card_id, image_path, position)
+          values (${card.id}, ${badPath}, 1) returning id
+        `;
+        const response = await request.get(
+          `/api/v1/images/${card.id}?image_id=${row.id}`,
+        );
+        expect(response.status()).toBe(200);
+        expect(response.headers()["content-type"]).toBe("image/webp");
+        const meta = await sharp(await response.body()).metadata();
+        expect(meta.width).toBe(910);
+        expect(meta.height).toBe(550);
+      }
+    } finally {
+      await sql.end();
+    }
   });
 });

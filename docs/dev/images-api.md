@@ -33,7 +33,8 @@ Phase 3 までと同様、FastAPI と並行稼働する Next.js 側の Route Han
 ## 既存 image_path の互換
 
 `src/lib/images/paths.ts` の1箇所で解決する。**返すのは `IMAGE_DIR` の realpath 配下に実在するファイルだけ**
-（セパレータ境界で判定。シンボリックリンクの脱出も拒否）。`..` を含むパス・外部絶対パスは 404。
+（セパレータ境界で判定。シンボリックリンクの脱出も拒否）。`..` を含むパスや外部絶対パスは実ファイルを
+返さず、既存 FastAPI と同じく**白いプレースホルダ WebP を 200** で返す（内容は漏らさない）。
 
 1. `IMAGE_DIR` 配下の絶対パス（そのまま）
 2. `/uploads/...` / `uploads/images/...` / basename を `IMAGE_DIR` 基準へ写像
@@ -49,6 +50,7 @@ Phase 3 までと同様、FastAPI と並行稼働する Next.js 側の Route Han
 ## OCR（Vertex AI）
 
 - `OCR_PROVIDER=vertex` のときだけ `@google/genai` で Vertex AI（既定 `gemini-3.1-flash-lite`）を呼ぶ。
+  **OCR 有効時の課金は外部（Google Cloud）の上限設定に依存する**（アプリ側のレート制限は未実装）。
   既定は `none`（外部を呼ばず空の結果）。
 - 認証は `GOOGLE_APPLICATION_CREDENTIALS`（`secrets/vertex-sa.json`）。鍵・プロンプトはクライアントへ出さない。
 - プロンプト・応答スキーマ・正規化は既存 `backend/app/services/ocr.py` を踏襲。`OCR_STRICT_FAILURE=true` のとき
