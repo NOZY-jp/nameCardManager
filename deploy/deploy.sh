@@ -165,7 +165,12 @@ rollback_to() { # <prev> <target>
     log "=== rollback reset FAILED; manual action needed (production may run ${target:0:8}) ==="
     return 1
   fi
-  apply "$target" "$prev" || log "rollback build FAILED"
+  # 稼働版を確認する仕組みは無い（イメージに SHA を埋めておらず、起動時刻だけでは
+  # 旧版稼働を保証できない）。そのため apply（build と up）の成否を成功条件にする。
+  if ! apply "$target" "$prev"; then
+    log "=== rollback apply FAILED; manual action needed (production may run ${target:0:8}) ==="
+    return 1
+  fi
   if wait_for_health; then
     log "=== rollback done; production runs ${prev:0:8} ==="
     return 0

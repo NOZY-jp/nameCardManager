@@ -13,7 +13,7 @@ set -Eeuo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 DEPLOY_SH="$HERE/deploy.sh"
 ROOT="$(mktemp -d)"
-trap 'rm -rf "$ROOT"' EXIT
+trap 'if [ "${KEEP:-0}" = 1 ]; then echo "kept $ROOT"; else rm -rf "$ROOT"; fi' EXIT
 
 APP_DIR="$ROOT/app"
 STATE_DIR="$ROOT/state"
@@ -21,11 +21,12 @@ HOME="$ROOT/home"
 UNIT_DIR="$HOME/.config/systemd/user"
 mkdir -p "$APP_DIR/deploy/systemd" "$STATE_DIR" "$UNIT_DIR" "$ROOT/bin"
 export APP_DIR STATE_DIR HOME
+FORCE_REBUILD="${FORCE_REBUILD:-0}"  # deploy.sh 本体の既定値
 
 log() { printf '[test] %s\n' "$*"; }
 
 # 関数だけを取り出して読み込む（main は実行しない）
-awk '/^sync_file\(\) \{/,/^# CI の状態/' "$DEPLOY_SH" | sed '$d' >"$ROOT/functions.sh"
+awk '/^compose\(\) \{/,/^# ---- main ----/' "$DEPLOY_SH" | sed '$d' >"$ROOT/functions.sh"
 # shellcheck source=/dev/null
 source "$ROOT/functions.sh"
 
@@ -43,6 +44,8 @@ git -C "$APP_DIR" add -A
 git -C "$APP_DIR" commit -q -m old
 OLD="$(git -C "$APP_DIR" rev-parse HEAD)"
 
+mkdir -p "$APP_DIR/backend"
+printf 'target-backend\n' >"$APP_DIR/backend/app.py"
 printf 'target-commit\n' >"$APP_DIR/deploy/webhook.py"
 printf 'target-install\n' >"$APP_DIR/deploy/install.sh"
 printf 'target-deploy\n' >"$APP_DIR/deploy/deploy.sh"
@@ -103,6 +106,37 @@ if ! rollback_to "$OLD" "$TARGET"; then
 fi
 [ -s "$APPLY_LOG" ] || fail "rollback must rebuild PREV"
 [ -s "$HEALTH_LOG" ] || fail "rollback must check health"
+
+# --- 4b. apply（ビルド）が失敗したら rollback done を出さず異常終了する ---
+# shellcheck source=/dev/null
+source "$ROOT/functions.sh"  # スタブを外し、deploy.sh 実体の apply に戻す
+DOCKER_LOG="$ROOT/docker.log"
+export DOCKER_LOG
+cat >"$ROOT/bin/docker" <<'DOCKERSTUB'
+#!/bin/sh
+echo "docker $*" >>"$DOCKER_LOG"
+case "$*" in *" build "*) exit 1 ;; esac
+exit 0
+DOCKERSTUB
+chmod +x "$ROOT/bin/docker"
+hash -r
+printf '%s %s
+' "$TARGET" 0 >"$STATE_DIR/failed-deploy"  # 本番は rollback 前に記録する
+apply_fail_health_before="$(wc -l <"$HEALTH_LOG")"
+if rollback_to "$OLD" "$TARGET" >"$ROOT/rollback-apply-fail.log" 2>&1; then
+  fail "rollback must fail when apply fails"
+fi
+grep -q "build" "$DOCKER_LOG" || fail "apply failure test must attempt build"
+if grep -q " up " "$DOCKER_LOG"; then
+  fail "apply failure must not run compose up"
+fi
+[ "$(wc -l <"$HEALTH_LOG")" = "$apply_fail_health_before" ] || fail "apply failure must not check health"
+if grep -q "rollback done" "$ROOT/rollback-apply-fail.log"; then
+  fail "apply failure must not report rollback done"
+fi
+[ -s "$STATE_DIR/failed-deploy" ] || fail "apply failure must keep failed-deploy marker"
+rm -f "$ROOT/bin/docker"
+hash -r
 
 # --- 5. reset が失敗したら同期しない（設置物だけ新しくなる不整合を防ぐ） ---
 GIT_BIN="$(command -v git)"
