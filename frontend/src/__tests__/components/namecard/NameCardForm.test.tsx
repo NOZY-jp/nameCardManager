@@ -161,8 +161,8 @@ describe("NameCardForm", () => {
     const cardWithTwoContacts = {
       ...sampleNamecard,
       contact_methods: [
-        { type: "email", value: "tanaka@example.com", label: "仕事" },
-        { type: "tel", value: "090-1234-5678", label: "携帯" },
+        { type: "email" as const, value: "tanaka@example.com", label: "仕事" },
+        { type: "tel" as const, value: "090-1234-5678", label: "携帯" },
       ],
     };
 
