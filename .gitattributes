@@ -3,3 +3,4 @@
 deploy/*.sh text eol=lf
 deploy/*.py text eol=lf
 deploy/systemd/* text eol=lf
+*.sh text eol=lf

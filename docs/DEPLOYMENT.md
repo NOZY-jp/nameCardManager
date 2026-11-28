@@ -106,7 +106,7 @@ GEMINI_API_KEY=
 | --- | --- |
 | `POSTGRES_PASSWORD` | DB ユーザー `namecard_user` のパスワード |
 | `SECRET_KEY` | JWT 署名鍵 |
-| `OCR_PROVIDER` | OCR の実装。`ndl` / `bedrock` / `gemini` / `none`（compose の既定は `ndl`） |
+| `OCR_PROVIDER` | OCR の実装。`vertex`（本番） / `ndl` / `bedrock` / `gemini` / `none`（compose の既定は `ndl`） |
 | `OCR_SERVICE_URL` | `OCR_PROVIDER=ndl` のときの OCR サービス（既定 `http://ocr:8100`） |
 | `VERTEX_PROJECT` / `VERTEX_LOCATION` / `VERTEX_MODEL` | `OCR_PROVIDER=vertex` のときの Vertex AI 設定（既定 `global` / `gemini-3.1-flash-lite`） |
 | `OCR_STRICT_FAILURE` | `true` なら OCR 失敗時に 503 を返す。`false` は空の名刺を返す |
@@ -164,6 +164,41 @@ server {
 設定変更時は `sudo nginx -t && sudo systemctl reload nginx`。Cloudflare 側のホスト名とトンネルのルーティングはダッシュボード側の設定が正で、リポジトリには保存していない。
 
 ---
+
+## 刷新中の新旧同居（Phase 6 まで）
+
+Next.js 単一アプリへの刷新（`docs/plans/nextjs-fullstack-rebuild.md`）は Phase 6 まで、現行の FastAPI と新しい Next サーバー実装が**同じ DB・同じホストで並行稼働**する。Phase 6 の切り替えは **nginx の upstream（`/api/` の転送先）を新実装へ向け直すだけ**で行い、DB や Cloudflare Tunnel は変更しない。切り替え後も旧 FastAPI イメージは1か月残し、問題があれば nginx を戻してロールバックする。
+
+### 構成とポート
+
+| 役割 | 現行（Phase 0〜5） | 移行中（Phase 2〜5 は並行） | Phase 7 以降 |
+| --- | --- | --- | --- |
+| 画面 | `frontend`（Next.js、ホスト `3001` → コンテナ `3000`） | 同じ `frontend` | `app` に統合 |
+| API | `backend`（FastAPI、ホスト `8000`）、`/api/v1/*` の転送先 | 新実装の Route Handlers と FastAPI が**並行稼働** | `app`（Next.js、`3001`→`3000`） |
+| DB | `db`（PostgreSQL 16 + pg_bigm、`5432`） | 同じ DB を共用（テーブル・ID は変更しない） | 同じ |
+| OCR サービス | `ocr`（NDLOCR-Lite、`8100`） | 同じ（本番 OCR は Vertex AI） | 削除 |
+| 切替方法 | — | **Phase 6 で nginx の `/api/` 転送先を新実装へ変えるだけ**（DB・Tunnel・DNS は変更しない） | — |
+
+サービス名は Phase 7 で `backend` → `app` に改名する予定（ホスト側ポートは `3001` のまま）。
+
+### 環境変数の対応（変数名と公開設定値のみ）
+
+この表には変数名と公開設定値だけを書き、接続文字列の実値・パスワード・鍵・トークン・Webhook Secret は書かない（実値は `secrets/` と `.env*` にだけ置く）。
+
+`.env` / `.env.prod` / `secrets/` は未追跡で、`git reset --hard` でも消えない。新旧で同じ意味の変数を次のように対応させる（変数名と公開設定値の対応表。接続文字列の実値・鍵の中身はリポジトリに置かない）。
+
+| 用途 | 現行 FastAPI | 新 Next.js | 備考 |
+| --- | --- | --- | --- |
+| DB 接続 | `DATABASE_URL`（`postgresql+psycopg://…`） | `DATABASE_URL`（postgres.js 用にドライバ表記だけ変える） | 同じ DB・同じ認証情報 |
+| セッション署名 | `SECRET_KEY` | `AUTH_SECRET` | Auth.js の JWT Cookie 署名 |
+| OCR 切替 | `OCR_PROVIDER=vertex` | `OCR_PROVIDER=vertex` | 同名で引き継ぐ |
+| Vertex 設定 | `VERTEX_PROJECT` / `VERTEX_LOCATION` / `VERTEX_MODEL` | 同じ | `gemini-3.1-flash-lite` |
+| Vertex 認証 | `GOOGLE_APPLICATION_CREDENTIALS`（`secrets/vertex-sa.json` を `:ro` マウント） | 同じ | 鍵はファイルのまま |
+| API ベース URL | `NEXT_PUBLIC_API_BASE_URL` | 不要 | 同一オリジンの `/api/v1` へ寄せる |
+| OCR サービス | `OCR_SERVICE_URL` | 使わない | Phase 7 で削除 |
+| 旧 OCR 経路 | `GEMINI_API_KEY` / `AWS_*` / `BEDROCK_MODEL_ID` | 引き継がない | 本番は Vertex に統一 |
+
+この間も `main` へのマージで `deploy.sh` が動く。`deploy/` の `webhook.py`・`install.sh`・systemd unit はデプロイ時に自動同期される（差分があるときだけ再起動）。`deploy.sh` 自身は実行中の書き換えを避けるため自動更新せず、差分は `deploy.log` の警告にだけ出る。`deploy.sh` を変えたときは `~/nameCardManager/deploy/install.sh` を1回手で実行する。
 
 ## ビルドと起動
 
