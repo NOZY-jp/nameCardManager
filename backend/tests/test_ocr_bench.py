@@ -255,3 +255,64 @@ def test_variance_is_zero_for_two_identical_values() -> None:
     same = metrics.variance([0.987, 0.987])
     assert same["samples"] == 2
     assert same["stdev"] == 0.0
+
+
+def test_unreadable_image_is_anonymous_and_does_not_abort(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """読めない画像でも継続し、出力・stderr にファイル名/パスを出さない。"""
+    images = tmp_path / "images"
+    images.mkdir()
+    _make_png(images / "a-ok.png")
+    _make_png(images / "b-ok.png")
+    _make_png(images / "c-山田太郎.png")
+    truth_path = tmp_path / "truth.json"
+    truth_path.write_text(
+        json.dumps(
+            {
+                "a-ok": TRUTH,
+                "b-ok": TRUTH,
+                "c-山田太郎": TRUTH,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    out = tmp_path / "result.json"
+
+    original_read_bytes = Path.read_bytes
+
+    def fake_read_bytes(self: Path) -> bytes:
+        if self.name == "c-山田太郎.png":
+            msg = "permission denied: " + str(self)
+            raise OSError(msg)
+        return original_read_bytes(self)
+
+    monkeypatch.setattr(Path, "read_bytes", fake_read_bytes)
+
+    code = measure.main(
+        [
+            "--images",
+            str(images),
+            "--truth",
+            str(truth_path),
+            "--out",
+            str(out),
+            "--provider",
+            "fake",
+            "--runs",
+            "2",
+        ]
+    )
+
+    assert code == 1  # 失敗はあるが、残りは処理済み
+    captured = capsys.readouterr()
+    text = out.read_text(encoding="utf-8") + captured.out + captured.err
+    assert "c-山田太郎" not in text
+    assert "山田" not in text
+    assert "permission denied" not in text
+    assert str(images) not in text
+
+    result = json.loads(out.read_text(encoding="utf-8"))
+    assert result["runs"][0]["cards"] == 2  # 読めた 2 枚は集計済み
+    assert result["errors"] == [{"card": "card-03", "error": "OSError"}] * 2

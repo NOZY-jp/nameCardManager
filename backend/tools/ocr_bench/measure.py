@@ -101,8 +101,10 @@ def run_once(
         if expected is None:
             errors.append({"card": label, "error": "truth_missing"})
             continue
-        image_bytes = image.read_bytes()
         try:
+            # 画像の読み込み・デコードも含めて捕捉する。例外メッセージには
+            # パスやファイル名が入り得るため、種別名だけを記録する。
+            image_bytes = image.read_bytes()
             transcribed = provider.transcribe(image_bytes, stem=stem)
             structured = provider.structure(image_bytes, stem=stem)
         except Exception as exc:  # 1 枚の失敗で全体を止めない
