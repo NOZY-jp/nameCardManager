@@ -18,26 +18,24 @@ FastAPI と並行稼働する Next.js 側の Route Handlers。認可は `src/lib
 同じ WHERE で数える（結果 0 件の範囲外ページでも総件数を返すため）。一覧の item は `images` 配列、
 検索の item は先頭画像の `image_path`（現行 FastAPI と同じ形）。
 
-## 検索と pg_bigm
+## 検索（pg_trgm）
 
-- `LIKE`/`ILIKE` はこの PostgreSQL で `pg_bigm.gin_key_like` が未対応のため GIN 索引を使わない（実測: Seq Scan）。
-- 名刺のテキスト列は **`lower(col) =% lower($1)`** で検索する。`0001_add_lower_bigm_indexes.sql` が
-  `lower(col)` の GIN 索引（`gin_bigm_ops`）を追加し、列ごとに `UNION` して
-  `Bitmap Index Scan on ix_name_cards_*_lower_bigm` を使う。大小無視・かなカナ相互一致を維持する。
-- `contact_methods.value` は GIN 索引が無いため `ILIKE`（全走査）。
-- `=%` はワイルドカード不要の部分一致（`LIKE '%kw%'` 相当）。検索語に含まれる `%` / `_` は
-  **ワイルドカードとして扱われない**（全件一致にはならない）。記号自体を文字として一致させる
-  検索は pg_bigm の 2-gram 制約で一致しない場合がある（既存 `ILIKE` からの挙動差）。
-- ダミー 23 万件での実測: `lower(last_name) =% lower('rare')` → `Bitmap Index Scan on
-  ix_name_cards_last_name_lower_bigm`、Execution 5.4ms。`lower(last_name) =% lower('tanaka')`
-  （3万件ヒット）でも同 Index Scan で 30.3ms。`ILIKE` は Seq Scan。
+- 名刺のテキスト列は **`lower(col) LIKE '%' || lower($1) || '%'`** で検索する。
+  `0001_add_lower_trgm_indexes.sql` が `pg_trgm` を有効化し、`lower(col)` の GIN 索引
+  （`gin_trgm_ops`）を追加する。列ごとに `UNION` して `Bitmap Index Scan on
+  ix_name_cards_*_lower_trgm` を使う。
+- 大小無視・かなカナ相互一致・`%`/`_` のワイルドカードは旧 `ILIKE` と同じ。
+- `contact_methods.value` は索引を張らず `ILIKE`（全走査。件数が小さいため）。
+- ダミー 23 万件での実測: `lower(last_name) LIKE '%rare%'` → `Bitmap Index Scan on
+  ix_name_cards_last_name_lower_trgm`（数 ms）。`ILIKE` 単体は `pg_bigm.gin_key_like` 未対応で Seq Scan。
+- `pg_bigm` の `=%` は**類似度演算子**（部分一致ではない）ため検索には使わない。
 
 ## 既存 FastAPI との差異
 
 | 項目 | 差異 |
 | --- | --- |
 | バリデーションエラー | 既存は 422 `{"detail":[{loc,msg,type},…]}`。新実装も配列で返す（`type` の値は Zod 由来で Pydantic と一部異なる） |
-| 検索の英字大小 | 既存と同じく大小無視（`lower()` の関数インデックスで GIN を使用）。`%`/`_` は文字扱い |
+| 検索の英字大小 | 既存と同じく大小無視（`lower()` の trgm GIN 索引）。`%`/`_` も旧 ILIKE と同じワイルドカード |
 | 削除時の子行 | DB の FK が `NO ACTION` のため、連絡先・画像・中間テーブルをトランザクションで明示削除 |
 | updated_at | アプリ側で更新（現行同様。DB トリガーなし） |
 

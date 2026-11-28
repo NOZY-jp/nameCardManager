@@ -16,8 +16,8 @@
     "test:e2e:ui": "playwright test --ui",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:apply": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f drizzle/0000_initial.sql -f drizzle/0001_add_lower_bigm_indexes.sql",
-    "db:rollback": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f drizzle/0001_add_lower_bigm_indexes.down.sql -f drizzle/0000_initial.down.sql",
+    "db:apply": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f drizzle/0000_initial.sql -f drizzle/0001_add_lower_trgm_indexes.sql",
+    "db:rollback": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f drizzle/0001_add_lower_trgm_indexes.down.sql -f drizzle/0000_initial.down.sql",
     "db:check-names": "node scripts/check-db-names.mjs",
     "docs:check-env": "node scripts/check-auth-env-docs.mjs"
   },

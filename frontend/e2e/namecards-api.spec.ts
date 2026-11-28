@@ -80,8 +80,10 @@ test.describe("名刺 API", () => {
     expect(percentSearch.status()).toBe(200);
     const percentHits = await percentSearch.json();
     const percentIds = percentHits.items.map((item: { id: number }) => item.id);
-    expect(percentIds).not.toContain(asciiCard.id);
-    expect(percentIds).not.toContain(kanaCard.id);
+
+    // % はワイルドカード（旧 ILIKE 同等）で全件に一致する
+    expect(percentIds).toContain(asciiCard.id);
+    expect(percentIds).toContain(kanaCard.id);
 
     // % を含むカードでも、他の語（100）では通常どおり一致する
     const literalSearch = await request.get("/api/v1/search?q=100");
@@ -90,6 +92,47 @@ test.describe("名刺 API", () => {
     expect(literalHits.items.map((item: { id: number }) => item.id)).toContain(
       literalCard.id,
     );
+
+    // 部分一致（旧 ILIKE 同等）: bcd → abcdef、xbc → abc は不一致
+    const abcdef = await request.post("/api/v1/namecards", {
+      data: { last_name: "abcdef" },
+    });
+    expect(abcdef.status()).toBe(201);
+    const abcdefCard = await abcdef.json();
+    const abc = await request.post("/api/v1/namecards", {
+      data: { last_name: "abc" },
+    });
+    expect(abc.status()).toBe(201);
+    const abcCard = await abc.json();
+
+    const partial = await request.get("/api/v1/search?q=bcd");
+    expect(partial.status()).toBe(200);
+    const partialHits = await partial.json();
+    expect(partialHits.items.map((item: { id: number }) => item.id)).toContain(
+      abcdefCard.id,
+    );
+
+    const similar = await request.get("/api/v1/search?q=xbc");
+    expect(similar.status()).toBe(200);
+    const similarHits = await similar.json();
+    expect(
+      similarHits.items.map((item: { id: number }) => item.id),
+    ).not.toContain(abcCard.id);
+
+    // _ はワイルドカード（旧 ILIKE 同等）
+    const wildcard = await request.get("/api/v1/search?q=a_c");
+    expect(wildcard.status()).toBe(200);
+    const wildcardHits = await wildcard.json();
+    expect(wildcardHits.items.map((item: { id: number }) => item.id)).toContain(
+      abcCard.id,
+    );
+
+    // 範囲外ページでも total は実件数
+    const farSearch = await request.get("/api/v1/search?q=tanaka&page=999");
+    expect(farSearch.status()).toBe(200);
+    const farBody = await farSearch.json();
+    expect(farBody.items).toEqual([]);
+    expect(farBody.total).toBeGreaterThanOrEqual(1);
   });
 
   test("登録 → 一覧 → 詳細 → 編集 → 検索 → 削除", async ({ request }) => {
@@ -199,7 +242,7 @@ test.describe("名刺 API", () => {
     }
 
     const byContact = await request.get(
-      `/api/v1/search?q=${encodeURIComponent(`${marker}@example`)}`,
+      `/api/v1/search?q=${encodeURIComponent("03-0000-0000")}`,
     );
     expect(byContact.status()).toBe(200);
     const contactHits = await byContact.json();

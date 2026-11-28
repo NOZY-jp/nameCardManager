@@ -526,17 +526,17 @@ export async function searchNameCards(userId: number, params: SearchParams) {
     keyword.length > 0
       ? (() => {
           const { hiragana, katakana } = normalizeKana(keyword);
-          // OR を 1 本にまとめると GIN 索引が使われないため、列ごとの =% を UNION する。
+          // OR を 1 本にまとめると GIN 索引が使われないため、列ごとの LIKE を UNION する。
           const branches = [
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(first_name) =% lower(${keyword})`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(last_name) =% lower(${keyword})`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(first_name_kana) =% lower(${hiragana})`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(first_name_kana) =% lower(${katakana})`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(last_name_kana) =% lower(${hiragana})`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(last_name_kana) =% lower(${katakana})`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(memo) =% lower(${keyword})`,
-            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(met_notes) =% lower(${keyword})`,
-            sql`SELECT nc_id FROM rel_tree WHERE lower(name) =% lower(${keyword})`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(first_name) LIKE '%' || lower(${keyword}) || '%'`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(last_name) LIKE '%' || lower(${keyword}) || '%'`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(first_name_kana) LIKE '%' || lower(${hiragana}) || '%'`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(first_name_kana) LIKE '%' || lower(${katakana}) || '%'`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(last_name_kana) LIKE '%' || lower(${hiragana}) || '%'`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(last_name_kana) LIKE '%' || lower(${katakana}) || '%'`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(memo) LIKE '%' || lower(${keyword}) || '%'`,
+            sql`SELECT id FROM name_cards WHERE user_id = ${userId} AND lower(met_notes) LIKE '%' || lower(${keyword}) || '%'`,
+            sql`SELECT nc_id FROM rel_tree WHERE lower(name) LIKE '%' || lower(${keyword}) || '%'`,
             sql`SELECT name_card_id FROM contact_methods WHERE value ILIKE ${`%${keyword}%`}`,
           ];
           return sql`AND nc.id IN (${sql.join(branches, sql` UNION `)})`;
