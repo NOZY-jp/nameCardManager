@@ -190,7 +190,12 @@ Next.js 単一アプリへの刷新（`docs/plans/nextjs-fullstack-rebuild.md`�
 | 用途 | 現行 FastAPI | 新 Next.js | 備考 |
 | --- | --- | --- | --- |
 | DB 接続 | `DATABASE_URL`（`postgresql+psycopg://…`） | `DATABASE_URL`（postgres.js 用にドライバ表記だけ変える） | 同じ DB・同じ認証情報 |
-| セッション署名 | `SECRET_KEY` | `AUTH_SECRET` | Auth.js の JWT Cookie 署名 |
+| セッション署名 | `SECRET_KEY` | `AUTH_SECRET` | Auth.js の JWT Cookie 署名（`SECRET_KEY` とは別物） |
+| 旧JWT署名 | `SECRET_KEY` | `SECRET_KEY`（共用） | HS256。本文 `access_token` の発行と旧JWTの検証に使う |
+| 旧JWTの有効分数 | — | `JWT_EXPIRE_MINUTES` | 既定 60 |
+| 旧JWT互換の開始日 | — | `LEGACY_JWT_SWITCH_DATE` | `YYYY-MM-DD`。未設定なら旧JWTを受理しない |
+| 旧JWT互換の日数 | — | `LEGACY_JWT_GRACE_DAYS` | 既定 14 |
+| セッションCookieの日数 | — | `AUTH_SESSION_MAX_AGE_DAYS` | 既定 30 |
 | OCR 切替 | `OCR_PROVIDER=vertex` | `OCR_PROVIDER=vertex` | 同名で引き継ぐ |
 | Vertex 設定 | `VERTEX_PROJECT` / `VERTEX_LOCATION` / `VERTEX_MODEL` | 同じ | `gemini-3.1-flash-lite` |
 | Vertex 認証 | `GOOGLE_APPLICATION_CREDENTIALS`（`secrets/vertex-sa.json` を `:ro` マウント） | 同じ | 鍵はファイルのまま |

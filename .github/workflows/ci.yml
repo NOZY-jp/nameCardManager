@@ -94,6 +94,10 @@ jobs:
         working-directory: frontend
         run: pnpm db:check-names
 
+      - name: Check auth env names in docs
+        working-directory: frontend
+        run: pnpm docs:check-env
+
       - name: Run tests
         working-directory: frontend
         run: pnpm exec vitest --run

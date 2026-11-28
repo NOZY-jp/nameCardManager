@@ -18,7 +18,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:apply": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f drizzle/0000_initial.sql",
     "db:rollback": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f drizzle/0000_initial.down.sql",
-    "db:check-names": "node scripts/check-db-names.mjs"
+    "db:check-names": "node scripts/check-db-names.mjs",
+    "docs:check-env": "node scripts/check-auth-env-docs.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
