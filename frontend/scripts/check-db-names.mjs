@@ -4,7 +4,10 @@
 import { readFileSync } from "node:fs";
 
 const sqlUrl = new URL("../drizzle/0000_initial.sql", import.meta.url);
-const snapshotUrl = new URL("../drizzle/meta/0000_snapshot.json", import.meta.url);
+const snapshotUrl = new URL(
+  "../drizzle/meta/0000_snapshot.json",
+  import.meta.url,
+);
 
 const sql = readFileSync(sqlUrl, "utf8");
 const snapshot = JSON.parse(readFileSync(snapshotUrl, "utf8"));

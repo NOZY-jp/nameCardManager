@@ -161,7 +161,10 @@ export const nameCardTags = pgTable(
     tagId: integer("tag_id").notNull(),
   },
   (table) => [
-    primaryKey({ name: "name_card_tags_pkey", columns: [table.nameCardId, table.tagId] }),
+    primaryKey({
+      name: "name_card_tags_pkey",
+      columns: [table.nameCardId, table.tagId],
+    }),
     foreignKey({
       name: "name_card_tags_name_card_id_fkey",
       columns: [table.nameCardId],
