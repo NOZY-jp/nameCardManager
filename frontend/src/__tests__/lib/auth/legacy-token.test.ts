@@ -12,7 +12,7 @@ const SECRET = "dummy-secret-key-for-tests";
 
 afterEach(() => {
   delete process.env.SECRET_KEY;
-  process.env.JWT_EXPIRE_MINUTES = undefined;
+  delete process.env.JWT_EXPIRE_MINUTES;
 });
 
 describe("legacy access token", () => {

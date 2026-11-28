@@ -47,19 +47,24 @@ export async function verifyLegacyJwt(
   if (!secret) return null;
 
   try {
-    const { payload } = await jwtVerify(
+    const { payload, protectedHeader } = await jwtVerify(
       token,
       createSecretKey(Buffer.from(secret)),
       {
         algorithms: ["HS256"],
       },
     );
+    // alg は HS256 固定（none / HS512 などは拒否）。exp は必須で未来であること。
+    // iat の未来判定は時計ずれで誤拒否しやすいため行わない（exp のみ必須）。
+    if (protectedHeader.alg !== "HS256") return null;
+    if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp))
+      return null;
+    if (payload.exp * 1000 <= now.getTime()) return null;
     const sub = payload.sub;
-    const email = typeof payload.email === "string" ? payload.email : "";
-    if (!sub) return null;
+    if (!sub || typeof payload.email !== "string") return null;
     const id = Number(sub);
     if (!Number.isInteger(id) || id <= 0) return null;
-    return { id, email };
+    return { id, email: payload.email };
   } catch {
     return null;
   }

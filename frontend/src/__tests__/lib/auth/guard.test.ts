@@ -8,7 +8,7 @@ vi.mock("@/auth", () => ({
 import { getCurrentUser, unauthorized } from "@/lib/auth/guard";
 
 afterEach(() => {
-  process.env.LEGACY_JWT_SWITCH_DATE = undefined;
+  delete process.env.LEGACY_JWT_SWITCH_DATE;
   delete process.env.SECRET_KEY;
 });
 
