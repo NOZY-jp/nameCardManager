@@ -181,41 +181,79 @@ rollback_to() { # <prev> <target>
 
 # CI の状態を GitHub API から読む（public リポジトリなので認証不要）
 ci_state() {
-  local sha="$1"
-  curl -fsS -m 15 -H 'Accept: application/vnd.github+json' \
+  local sha="$1" raw state detail
+  raw=$(curl -fsS -m 15 -H 'Accept: application/vnd.github+json' \
     "https://api.github.com/repos/$REPO_SLUG/commits/$sha/check-runs?per_page=100" 2>/dev/null \
     | python3 -c '
 import json, sys
+
+# 失敗とみなす結論だけを列挙する。cancelled / stale / neutral / skipped は
+# 「失敗ではないが成功でもない」ため pending（次回再試行）として扱う。
+FAILURE = ("failure", "timed_out", "action_required", "startup_failure")
 try:
     runs = json.load(sys.stdin).get("check_runs", [])
 except Exception:
-    print("unknown"); raise SystemExit
+    print("unknown unknown"); raise SystemExit
 if not runs:
-    print("pending")
-elif any(r.get("status") != "completed" for r in runs):
-    print("pending")
-elif any(r.get("conclusion") in ("failure", "cancelled", "timed_out", "action_required", "startup_failure") for r in runs):
-    print("failure")
+    print("pending pending"); raise SystemExit
+if any(r.get("status") != "completed" for r in runs):
+    print("pending pending"); raise SystemExit
+conclusions = [r.get("conclusion") for r in runs]
+failed = [c for c in conclusions if c in FAILURE]
+if failed:
+    print("failure", failed[0])
+elif all(c == "success" for c in conclusions):
+    print("success success")
 else:
-    print("success")
-' || echo unknown
+    other = next((c for c in conclusions if c != "success"), "pending")
+    print("pending", other)
+' 2>/dev/null || true)
+  # curl / python のどちらが失敗しても 1 行（状態 実結論）に揃える
+  state=$(printf '%s\n' "$raw" | awk 'NR==1 {print $1}')
+  detail=$(printf '%s\n' "$raw" | awk 'NR==1 {print $2}')
+  printf '%s %s\n' "${state:-unknown}" "${detail:-unknown}"
+}
+
+# CI が成功しないまま諦めたことを failed-deploy に残す（sha 単位でクールダウンする）。
+# 書き込みに失敗してもデプロイの終了コードは変えない（抑止できない旨をログに残す）。
+record_ci_give_up() { # <sha> <reason>
+  if ! printf '%s %s %s\n' "$1" "$(date +%s)" "$2" >"$STATE_DIR/failed-deploy"; then
+    log "warn: cannot write failed-deploy (retry suppression unavailable)"
+    return 0
+  fi
+  return 0
 }
 
 wait_for_ci() {
-  local sha="$1" deadline state
+  local sha="$1" deadline state detail result note last_note=""
   if [ "$SKIP_CI_CHECK" = "1" ]; then
     log "CI check skipped (SKIP_CI_CHECK=1)"
     return 0
   fi
+  # CI_TIMEOUT(900s) < RETRY_COOLDOWN(1800s): 待機しすぎず、次の再試行まで間を空ける。
   deadline=$(( $(date +%s) + CI_TIMEOUT ))
   while :; do
-    state=$(ci_state "$sha")
+    result=$(ci_state "$sha")
+    state=${result%% *}
+    detail=${result#* }
+    note="$detail"
+    [ "$detail" = "$state" ] && note="$state"
     case "$state" in
       success) log "CI: success ($(echo "$sha" | cut -c1-8))"; return 0 ;;
-      failure) log "CI: failure ($(echo "$sha" | cut -c1-8)) -> abort"; return 1 ;;
+      failure)
+        log "CI: failure ($(echo "$sha" | cut -c1-8)) -> abort; retry suppressed for ${RETRY_COOLDOWN}s"
+        record_ci_give_up "$sha" "ci-failure"
+        return 1
+        ;;
     esac
+    # 実際の結論（cancelled / stale など）を出し、同じ結論の連続ログは省く。
+    if [ "$note" != "$last_note" ]; then
+      log "CI: $note ($(echo "$sha" | cut -c1-8)) -> waiting"
+      last_note="$note"
+    fi
     if [ "$(date +%s)" -ge "$deadline" ]; then
-      log "CI: timeout after ${CI_TIMEOUT}s ($state) -> abort"
+      log "=== CI not successful ($note) after ${CI_TIMEOUT}s; retry suppressed for ${RETRY_COOLDOWN}s ==="
+      record_ci_give_up "$sha" "ci-$note"
       return 1
     fi
     sleep 20
@@ -321,14 +359,61 @@ if [ "$TARGET" = "$PREV" ] && [ "$TARGET" = "$LAST" ] && [ "$FORCE_REBUILD" = "0
   exit 0
 fi
 
-# 同じコミットの失敗を短時間に繰り返さない（1 分ポーリング対策）
-if [ -s "$STATE_DIR/failed-deploy" ]; then
-  failed_sha=$(awk '{print $1}' "$STATE_DIR/failed-deploy")
-  failed_at=$(awk '{print $2}' "$STATE_DIR/failed-deploy")
-  if [ "$failed_sha" = "$TARGET" ] && [ $(( $(date +%s) - ${failed_at:-0} )) -lt "$RETRY_COOLDOWN" ]; then
-    log "== $TARGET already failed recently; retry suppressed for ${RETRY_COOLDOWN}s =="
-    exit 0
+# 同じコミットの失敗を短時間に繰り返さない（1 分ポーリング対策）。
+# マーカーは sha 単位なので、main が進めば別 sha として通常どおりデプロイされる。
+# 戻り値: 0=クールダウン中で抑制, 1=CI 失敗の再試行を待たず中止, 2=通常続行
+retry_suppressed() { # <sha>
+  local sha="$1" failed_sha failed_at reason age result state detail
+  [ -s "$STATE_DIR/failed-deploy" ] || return 2
+  read -r failed_sha failed_at reason <"$STATE_DIR/failed-deploy" || true
+  [ "$failed_sha" = "$sha" ] || return 2
+  age=$(( $(date +%s) - ${failed_at:-0} ))
+  if [ "$age" -lt "$RETRY_COOLDOWN" ]; then
+    log "== $sha already failed recently; retry suppressed for ${RETRY_COOLDOWN}s =="
+    return 0
   fi
+  case "${reason:-deploy}" in
+    ci-*)
+      # クールダウン後は CI を 1 回だけ再照会する。成功に変わっていれば抑止を解除して
+      # 通常のデプロイ経路へ戻す（成功しているのに永久に止まるのを防ぐ）。
+      result=$(ci_state "$sha")
+      state=${result%% *}
+      detail=${result#* }
+      case "$state" in
+        success)
+          if rm -f "$STATE_DIR/failed-deploy"; then
+            log "== CI recovered (success); clearing failed-deploy =="
+          else
+            log "warn: CI recovered but cannot remove failed-deploy"
+          fi
+          return 2
+          ;;
+        failure)
+          log "=== CI failure (${detail}) on retry; retry suppressed for ${RETRY_COOLDOWN}s ==="
+          record_ci_give_up "$sha" "ci-failure"
+          return 1
+          ;;
+        pending)
+          log "=== CI still not successful (${detail}) on retry; not waiting again; retry suppressed for ${RETRY_COOLDOWN}s ==="
+          record_ci_give_up "$sha" "ci-$detail"
+          return 1
+          ;;
+        *)
+          log "=== CI state unknown (${detail}) on retry; not waiting again; retry suppressed for ${RETRY_COOLDOWN}s ==="
+          record_ci_give_up "$sha" "ci-$detail"
+          return 1
+          ;;
+      esac
+      ;;
+  esac
+  return 2
+}
+
+if retry_suppressed "$TARGET"; then
+  exit 0
+else
+  rc=$?
+  if [ "$rc" -eq 1 ]; then exit 1; fi
 fi
 
 wait_for_ci "$TARGET" || { log "=== aborted before deploy ==="; exit 1; }
@@ -353,7 +438,7 @@ if [ "$FAILED" -eq 0 ] && [ "$NEEDS_MIGRATION" -eq 1 ]; then
 fi
 
 if [ "$FAILED" -ne 0 ]; then
-  printf '%s %s\n' "$TARGET" "$(date +%s)" >"$STATE_DIR/failed-deploy"
+  printf '%s %s %s\n' "$TARGET" "$(date +%s)" deploy >"$STATE_DIR/failed-deploy"
   log "deploy failed; rolling back to ${PREV:0:8}"
   rollback_to "$PREV" "$TARGET" || exit 1
   exit 1
