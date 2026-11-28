@@ -30,7 +30,7 @@
 - モバイルネイティブアプリ化（Web のまま）
 - マルチテナント化・共有機能（現行同様、`user_id` による単一ユーザー空間）
 - UI デザインの全面刷新（既存 SCSS + shadcn/ui を流用）
-- OCR エンジンの変更（Gemini を継続。ただし呼び出しはサーバー側に閉じる）
+- OCR エンジンの変更（本番は Vertex AI の `gemini-3.1-flash-lite` を継続。ただし呼び出しはサーバー側に閉じる）
 
 ## 4. 目標スタック
 
@@ -39,12 +39,12 @@
 | フレームワーク | Next.js 16（App Router） | 現行と同じ。`output: "standalone"` |
 | 言語 | TypeScript（strict） | フロント・サーバー共通 |
 | API | Route Handlers（`app/api/v1/**/route.ts`）→ 将来 Server Actions / Server Components | 画面から直接 DB を読む形へ寄せる |
-| ORM / クエリ | **Drizzle ORM + postgres.js**（推奨） | SQL 寄りで `pg_bigm` の raw SQL 索引・再帰 CTE を書きやすい。Prisma は代替案 |
+| ORM / クエリ | **Drizzle ORM + postgres.js** | SQL 寄りで `pg_bigm` の raw SQL 索引・再帰 CTE を書きやすい。Prisma は採用しない |
 | マイグレーション | drizzle-kit（生成）＋ 手書き SQL（拡張・GIN 索引・再帰） | Alembic の履歴を初期マイグレーションとして1本に統合 |
 | 認証 | **Auth.js（NextAuth v5）の Credentials プロバイダ + JWT セッション Cookie** | 既存 `users` テーブルをそのまま認証する。`accounts` テーブルは OAuth 用で、メール/パスワードでは不要 |
 | パスワード | 既存の bcrypt（`$2b$12$`）を Node 側（`bcryptjs` / `@node-rs/bcrypt`）で検証。将来 argon2 へ遅延再ハッシュ | 現行 passlib bcrypt と互換 |
 | 画像処理 | `sharp` | webp 変換・サムネイル生成（現行 `_save_as_webp` 相当） |
-| OCR | Gemini API（サーバー側からのみ） | API キーはサーバー env。クライアントへ出さない |
+| OCR | Vertex AI `gemini-3.1-flash-lite`（サーバー側からのみ） | サービスアカウント鍵はサーバー env/secret。クライアントへ出さない。`ocr-service/`（NDLOCR-Lite）は Phase 7 で削除予定 |
 | スタイル | SCSS Modules + shadcn/ui | Tailwind は使わない（既存方針） |
 | テスト | Vitest（unit）/ Playwright（E2E）/ `tsc --noEmit` / `next build` | すべて CI で必須にする |
 | 実行環境 | Docker Compose（app + db）＋ nginx ＋ Cloudflare Tunnel | Python コンテナは廃止 |
@@ -57,7 +57,7 @@ flowchart LR
   CF -->|Tunnel| N[nginx :80]
   N -->|/ と /api/v1| APP[Next.js app :3001→3000]
   APP -->|Drizzle| DB[(PostgreSQL 16 + pg_bigm)]
-  APP -->|server only| G[Gemini API]
+  APP -->|server only| G[Vertex AI]
   APP -->|sharp| FS[(upload volume)]
 ```
 
@@ -78,7 +78,7 @@ app/
 lib/
   db/{schema.ts, client.ts, queries/*.ts}   # Drizzle スキーマとクエリ
   auth/{session.ts, password.ts, guard.ts}
-  ocr/{gemini.ts, geometry.ts}
+  ocr/{vertex.ts, geometry.ts}
   storage/{images.ts}
 migrations/                                 # drizzle-kit + 手書き SQL
 ```
@@ -94,7 +94,7 @@ migrations/                                 # drizzle-kit + 手書き SQL
 | `GET /api/v1/auth/me` | Route Handler | Cookie から解決 |
 | `GET/POST /api/v1/namecards`、`GET/PATCH/DELETE /namecards/{id}` | Route Handlers | 一覧は検索条件を受け取る |
 | `POST/DELETE/PUT /namecards/{id}/images...` | Route Handlers | `sharp` で webp + サムネイル |
-| `POST /api/v1/images/upload`、`/process`、`/process-additional` | Route Handlers | Gemini 呼び出しはサーバーのみ |
+| `POST /api/v1/images/upload`、`/process`、`/process-additional` | Route Handlers | Vertex AI 呼び出しはサーバーのみ |
 | `GET /api/v1/images/{namecard_id}`、`/{id}/thumbnail` | Route Handlers | 画像配信 |
 | `GET/POST /api/v1/relationships`、`/tree`、`{id}` の GET/PATCH/DELETE | Route Handlers | 再帰 CTE は raw SQL |
 | `GET/POST /api/v1/tags`、`{id}` の GET/PATCH/DELETE | Route Handlers | |
@@ -127,7 +127,8 @@ migrations/                                 # drizzle-kit + 手書き SQL
 ## 9. 画像・OCR
 
 - アップロードは Route Handler（`multipart/form-data`）で受ける。`sharp` で webp 化とサムネイル生成を行い、`name_card_images.image_path` へ保存。保存先は当面ローカルボリューム（`upload_data`）。
-- Gemini 呼び出しはサーバー側に閉じる。API キーはクライアントへ渡さない（現行同様）。
+- 本番の OCR は Vertex AI（`OCR_PROVIDER=vertex`, `gemini-3.1-flash-lite`）。呼び出しはサーバー側に閉じ、鍵はクライアントへ渡さない（現行同様）。
+- `ocr-service/`（NDLOCR-Lite）は Phase 7 で削除する。廃止すると「画像を外部に出さず無料で使える OCR」を失うため、必要になった場合はブラウザ内 OCR（WASM）を将来の選択肢として検討する（実装は Phase 7 以降の別 Issue）。
 - 名刺画像は個人情報。開発・テストはダミー画像のみ。ログに画像パス以上の情報を出さない。
 - 四隅座標の補正ロジック（`CameraOCRFlow` / `CornerSelector`）は純関数として切り出し、Vitest で単体テストを付ける。
 
@@ -159,7 +160,8 @@ CI は1ジョブ（Node 22 + pnpm 11）に統合し、赤のまま `main` へ入
 - コンテナは `app` と `db` の2つ。`app` は standalone 出力、ホスト `127.0.0.1:3001` → コンテナ `3000`。
 - nginx（`/etc/nginx/sites-available/name_nozyjp`）はパスをそのまま転送する構成を維持し、`/api/` の転送先を `app` に付け替える。
 - Cloudflare Tunnel と DNS は変更しない。TLS 終端は Cloudflare。
-- 反映は手動（`git checkout <commit>` → `docker compose build && up -d`）。本番反映は人の承認を得てから行う。
+- 反映は `main` へのマージ後の webhook CD（`deploy.sh`）で行う。本番反映は人の承認（マージ）を得てから行う。
+- `deploy/` の設定ファイルはデプロイ時に自動同期される（`deploy.sh` 自身は実行中書き換えを避けるため自動更新しない）。
 - ロールバックは旧イメージと旧コミットの再チェックアウトで行える状態を保つ（旧 FastAPI イメージを切替後1か月は残す）。
 
 ## 13. 段階的移行
@@ -170,7 +172,7 @@ CI は1ジョブ（Node 22 + pnpm 11）に統合し、赤のまま `main` へ入
 | 1 | スキーマ移植: Drizzle スキーマ＋初期マイグレーション、FK 索引・一意制約の追加 | ダミー DB で適用/ロールバック成功。本番 DDL と一致 |
 | 2 | 認証: 登録・ログイン・`me`・ログアウトを Cookie セッションで実装 | Playwright で認証フロー通過。旧 API と並行稼働 |
 | 3 | 名刺 CRUD と検索: Route Handlers + サーバー側クエリ | 一覧・詳細・登録・編集・削除・検索の E2E 通過。`EXPLAIN` で索引利用確認 |
-| 4 | 画像と OCR: アップロード、webp 化、サムネイル、Gemini 連携 | ダミー画像で撮影→四隅→OCR→保存が通る |
+| 4 | 画像と OCR: アップロード、webp 化、サムネイル、Vertex AI 連携 | ダミー画像で撮影→四隅→OCR→保存が通る |
 | 5 | タグ・所属・エクスポート/インポート | 既存 JSON の入出力互換 |
 | 6 | 切替: nginx を新アプリへ、FastAPI 停止 | 本番で主要導線を確認。再ログイン実施 |
 | 7 | 後片付け: Python コード・CI ジョブ・`docker/` の Python 分を削除 | リポジトリに Python が残らない |
@@ -186,7 +188,7 @@ CI は1ジョブ（Node 22 + pnpm 11）に統合し、赤のまま `main` へ入
 | `pg_bigm` の索引が効かないまま | 件数増加で検索が遅くなる | Phase 3 で `EXPLAIN` を完了条件にする |
 | 一括置換による長期停止 | 名刺データが参照できない時間が発生 | Phase 6 は切替のみに限定し、直前まで旧実装で稼働 |
 | 実データの漏えい | 個人情報の事故 | 開発・テストはダミーのみ。ダンプを共有領域・外部サービスへ置かない |
-| OCR 画像の外部送信 | Gemini へ名刺画像が渡る | 現行踏襲であることを明記。必要ならローカル OCR を将来検討 |
+| OCR 画像の外部送信 | Vertex AI へ名刺画像が渡る | 現行踏襲であることを明記。`ocr-service/` 廃止で無料ローカル OCR がなくなるため、必要ならブラウザ内 OCR（WASM）を将来検討 |
 
 ## 15. 未決事項と決定事項
 
@@ -196,10 +198,10 @@ CI は1ジョブ（Node 22 + pnpm 11）に統合し、赤のまま `main` へ入
 2. **リポジトリ**: 現行リポジトリ内で置き換える（履歴・Issue・Cloudflare 設定を維持、作業ブランチで進める）。
 3. **認証**: Auth.js（Credentials プロバイダ、JWT セッション Cookie）。既存 `users` をそのまま認証し、連携作業は行わない。
 
-### 未決
+### 決定（2026-11-28 追加）
 
-4. **ORM**: Drizzle（推奨）か Prisma か。Auth.js の Drizzle アダプタを使わないならどちらでも可。
-5. **`company_name` / `department` / `position`**: Relationship と二重管理のまま維持するか、どちらかへ寄せるか。
+4. **ORM**: Drizzle ORM + postgres.js を採用する（Prisma は採用しない）。
+5. **`company_name` / `department` / `position`**: Relationship との二重管理を維持する。
 
 ## 16. 受け入れ条件
 
