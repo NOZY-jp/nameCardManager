@@ -186,36 +186,54 @@ ci_state() {
     "https://api.github.com/repos/$REPO_SLUG/commits/$sha/check-runs?per_page=100" 2>/dev/null \
     | python3 -c '
 import json, sys
+
+# 失敗とみなす結論だけを列挙する。cancelled / stale / neutral / skipped は
+# 「失敗ではないが成功でもない」ため pending（次回再試行）として扱う。
+FAILURE = ("failure", "timed_out", "action_required", "startup_failure")
 try:
     runs = json.load(sys.stdin).get("check_runs", [])
 except Exception:
-    print("unknown"); raise SystemExit
+    print("unknown unknown"); raise SystemExit
 if not runs:
-    print("pending")
-elif any(r.get("status") != "completed" for r in runs):
-    print("pending")
-elif any(r.get("conclusion") in ("failure", "cancelled", "timed_out", "action_required", "startup_failure") for r in runs):
-    print("failure")
+    print("pending pending"); raise SystemExit
+if any(r.get("status") != "completed" for r in runs):
+    print("pending pending"); raise SystemExit
+conclusions = [r.get("conclusion") for r in runs]
+failed = [c for c in conclusions if c in FAILURE]
+if failed:
+    print("failure", failed[0])
+elif all(c == "success" for c in conclusions):
+    print("success success")
 else:
-    print("success")
-' || echo unknown
+    other = next((c for c in conclusions if c != "success"), "pending")
+    print("pending", other)
+' || echo 'unknown unknown'
 }
 
 wait_for_ci() {
-  local sha="$1" deadline state
+  local sha="$1" deadline state detail result note last_note=""
   if [ "$SKIP_CI_CHECK" = "1" ]; then
     log "CI check skipped (SKIP_CI_CHECK=1)"
     return 0
   fi
   deadline=$(( $(date +%s) + CI_TIMEOUT ))
   while :; do
-    state=$(ci_state "$sha")
+    result=$(ci_state "$sha")
+    state=${result%% *}
+    detail=${result#* }
+    note="$detail"
+    [ "$detail" = "$state" ] && note="$state"
     case "$state" in
       success) log "CI: success ($(echo "$sha" | cut -c1-8))"; return 0 ;;
       failure) log "CI: failure ($(echo "$sha" | cut -c1-8)) -> abort"; return 1 ;;
     esac
+    # 実際の結論（cancelled / stale など）を出し、同じ結論の連続ログは省く。
+    if [ "$note" != "$last_note" ]; then
+      log "CI: $note ($(echo "$sha" | cut -c1-8)) -> waiting"
+      last_note="$note"
+    fi
     if [ "$(date +%s)" -ge "$deadline" ]; then
-      log "CI: timeout after ${CI_TIMEOUT}s ($state) -> abort"
+      log "CI: timeout after ${CI_TIMEOUT}s ($note) -> abort"
       return 1
     fi
     sleep 20
