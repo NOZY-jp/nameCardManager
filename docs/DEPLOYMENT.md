@@ -239,6 +239,7 @@ ssh nozyjp
 - 現在の GitHub 側は **Secret 未登録**で、送信元 IP 方式で運用している。HMAC に切り替えるときは、GitHub の Webhook 編集で Secret を入力するだけでよい（コード変更不要）。
 - IP レンジは 1 時間キャッシュし、取得に失敗したときは無署名を拒否する（fail closed）。
 - どちらの方式でも、ペイロードの `repository.full_name` が一致しないものは 403。
+- 2026-11-28: 送信元 IP 方式で GitHub からの `push` を受信し、push から約 2 分（CI 待ち含む）で反映されることを実測。
 - 偽の trigger でも本番に入るのは「CI が緑で `origin/main` の祖先」のコミットだけ（`deploy.sh` 側で検証）。
 
 ### 運用
