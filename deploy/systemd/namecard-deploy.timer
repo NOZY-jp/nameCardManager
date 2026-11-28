@@ -1,0 +1,11 @@
+[Unit]
+Description=NameCard Manager deploy poll every 15 minutes (fallback)
+
+[Timer]
+# webhook の補完。1 分おきに origin/main を見て、変わっていれば deploy.sh を回す。
+OnBootSec=3min
+OnUnitActiveSec=1min
+AccuracySec=15s
+
+[Install]
+WantedBy=timers.target

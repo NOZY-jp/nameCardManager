@@ -1,11 +1,15 @@
 FROM node:22-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+# バージョンを固定しないと corepack が最新の pnpm (12 系) を取り、
+# build script 承認仕様の変更で pnpm install が ERR_PNPM_IGNORED_BUILDS で落ちる。
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable && corepack prepare pnpm@11.25.0 --activate
 
 FROM base AS deps
 WORKDIR /app
-COPY package.json pnpm-lock.yaml* ./
+# pnpm-workspace.yaml の allowBuilds（sharp / esbuild などの build script 許可）も必要
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 FROM base AS dev

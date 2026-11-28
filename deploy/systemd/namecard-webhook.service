@@ -1,0 +1,18 @@
+[Unit]
+Description=NameCard Manager deploy webhook (GitHub push -> deploy.sh)
+Documentation=file:%h/nameCardManager/docs/DEPLOYMENT.md
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/namecard-deploy
+Environment=PYTHONUNBUFFERED=1
+Environment=STATE_DIR=%h/namecard-deploy
+ExecStart=/usr/bin/python3 %h/namecard-deploy/webhook.py
+Restart=always
+RestartSec=5s
+# デプロイは docker compose を叩くので、ユーザーサービスでも十分な時間を与える
+TimeoutStopSec=30s
+
+[Install]
+WantedBy=default.target
