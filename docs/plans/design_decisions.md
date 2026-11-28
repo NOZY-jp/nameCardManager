@@ -176,7 +176,11 @@
 
 ---
 
-### 3. 検索・フィルタリング
+### 3. 検索・フィルタリング（2026-11-28 以前の検討記録）
+
+> **この節は刷新前（初期実装）の検討記録。** 現行の検索は `pg_trgm` + `lower(col) LIKE '%q%'`
+> （`docs/plans/nextjs-fullstack-rebuild.md` §10、`docs/dev/namecards-api.md` が正本）。`pg_bigm` の
+> GIN 索引は既存スキーマ一致のため残しているが検索には使わない。以下の「pg_bigm 推奨・決定」は当時の判断。
 
 日本語を含む名刺データの検索方法。
 
@@ -187,10 +191,12 @@
 | **単純 LIKE（インデックスなし）** | ✅ | ✅ | ❌ | ゼロ | ゼロ |
 | **pg_bigm（bi-gram GIN）** | ✅ 完全 | ✅ インデックス効く | △ `bigm_similarity()` | 低（拡張1つ） | ゼロ |
 | **PGroonga（Groonga ベース）** | ✅ 最高 | ✅ | ✅ | 中（依存が多い） | REINDEX必要 |
-| **pg_trgm（trigram）** | ❌ 非対応 | — | — | — | — |
+| **pg_trgm（trigram）** | △ 部分一致可（3文字以上で索引） | ✅ | — | 低（拡張1つ） | ゼロ |
 | **Elasticsearch + Kuromoji** | ✅ 最高 | ✅ | ✅ | 高（別サービス） | 高（JVM 512MB+） |
 
-> **注意**: `pg_trgm` は CJK 文字を non-alphanumeric として無視するため、**日本語検索には使えない**。
+> **Phase 3 の確定（2026-11-28）**: 検索は **`pg_trgm`（`lower(col)` + `gin_trgm_ops`）+ `LIKE`** を採用した。
+> 正本は `docs/dev/namecards-api.md`、適用は `docs/dev/db/drizzle.md`。`pg_bigm` の `=%` は類似度演算子で
+> 部分一致に使えないため不採用。trigram は 3 文字以上で索引が効き、1〜2 文字は結果は正しいが全走査になる。
 
 #### 各選択肢の詳細
 
@@ -266,9 +272,9 @@ LIMIT 20;
 
 ローマ字検索が必要なら、`*_romaji` カラムを追加し Python `pykakasi` でカナ→ローマ字変換を insert/update 時に実行。
 
-#### 🎯 決定事項
+#### 🎯 決定事項（当時）
 
-**Phase 1 から pg_bigm を導入**
+**Phase 1 から pg_bigm を導入**（2026-11-28 以前の判断。現在の検索は `pg_trgm` + `LIKE`）
 
 理由:
 1. CJK 部分一致の最適解で、クラッシュセーフ（GIN ベース）
@@ -689,7 +695,7 @@ Google Contacts CSV フォーマットを第一対応とする（最もメジャ
 | 四隅選択 UI | SVG overlay（フロント） | ユーザーが名刺の四隅を手動選択 |
 | 遠近補正 | OpenCV（バックエンド） | `cv2.getPerspectiveTransform` + `cv2.warpPerspective` |
 | カメラガイド枠 | フロントエンド | 撮影画面に名刺サイズの枠を表示 |
-| 検索 | pg_bigm (GIN)（Phase 1） | CJK 最適化、クラッシュセーフ、低運用コスト |
+| 検索 | pg_bigm (GIN)（Phase 1・当時） | 現在は `pg_trgm` + `lower() LIKE`（§10 参照）。pg_bigm 索引はスキーマ一致のため残置 |
 | DB マイグレーション | Alembic | スキーマ変更の追跡・ロールバック |
 | 画像フォーマット | WebP (quality 80) | JPEG 比 30% 小、全ブラウザ対応 |
 | エクスポート | CSV（Phase 1）、vCard 3.0（将来） | CSV は最大互換性、vCard は将来対応 |

@@ -1,5 +1,10 @@
 # 初期実装状況ドキュメント
 
+> **検索方式の注記（2026-11-28）**: 本文は当時の計画・記録です。現行の検索は `pg_trgm` + `lower(col) LIKE '%q%'` で、
+> `pg_bigm` の GIN 索引はスキーマ一致のため残しているが検索には使っていません。
+> 正本: `docs/dev/namecards-api.md` / `docs/plans/nextjs-fullstack-rebuild.md` §10。
+
+
 > 作成日: 2026-02-28
 > 対象: nameCardManager バックエンド + インフラ
 > 技術スタック: FastAPI (Python 3.14) + PostgreSQL 16 + Next.js + **shadcn/ui** + **SCSS**（⚠️ Tailwind 不使用）
