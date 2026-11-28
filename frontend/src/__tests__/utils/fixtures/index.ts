@@ -14,9 +14,13 @@ export const sampleNamecard = {
   image_back_url: "/images/card-back.jpg",
   memo: "重要な取引先",
   contact_methods: [
-    { type: "email", value: "tanaka@example.com", is_primary: true },
-    { type: "mobile", value: "090-1234-5678", is_primary: false },
-    { type: "address", value: "東京都千代田区丸の内1-1-1", is_primary: false },
+    { type: "email" as const, value: "tanaka@example.com", is_primary: true },
+    { type: "mobile" as const, value: "090-1234-5678", is_primary: false },
+    {
+      type: "address" as const,
+      value: "東京都千代田区丸の内1-1-1",
+      is_primary: false,
+    },
   ],
   tags: [
     { id: "1", name: "取引先" },
