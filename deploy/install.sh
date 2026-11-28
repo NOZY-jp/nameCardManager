@@ -24,9 +24,14 @@ copy() { # copy <src> <dst> <mode>
   local src="$1" dst="$2" mode="$3"
   if [ "$(cd "$(dirname "$src")" && pwd -P)/$(basename "$src")" = "$dst" ]; then
     chmod "$mode" "$dst"
-    return 0
+  else
+    install -m "$mode" "$src" "$dst"
   fi
-  install -m "$mode" "$src" "$dst"
+  # Windows からのコピー混入などで CRLF になっていても壊れないように正規化する
+  if grep -q $'\r' "$dst" 2>/dev/null; then
+    sed -i 's/\r$//' "$dst"
+    echo "==> normalized CRLF: $dst"
+  fi
 }
 
 echo "==> install to $STATE_DIR"

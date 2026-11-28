@@ -1,0 +1,5 @@
+# デプロイ用スクリプトと unit は Linux 上で実行するため、LF を固定する。
+# （Windows の working copy で CRLF になると `set -o pipefail` が壊れる）
+deploy/*.sh text eol=lf
+deploy/*.py text eol=lf
+deploy/systemd/* text eol=lf
