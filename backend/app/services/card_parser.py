@@ -194,14 +194,19 @@ _VARIANT_MAP = str.maketrans(
 _SURNAME_LOOKUP = frozenset(name.translate(_VARIANT_MAP) for name in SURNAMES)
 
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
-_URL_RE = re.compile(r"(?:https?://)?(?:www\.)?([A-Za-z0-9\-]+\.)+[A-Za-z]{2,}(?:/[^\s]*)?")
+_URL_RE = re.compile(
+    r"(?:https?://)?(?:www\.)?([A-Za-z0-9\-]+\.)+[A-Za-z]{2,}(?:/[^\s]*)?"
+)
 _PHONE_RE = re.compile(r"(?:\+81|0)\d{1,4}-\d{1,4}-\d{3,4}")
 _POSTAL_RE = re.compile(r"\d{3}-\d{4}")
 _LATIN_RE = re.compile(r"[A-Za-z][A-Za-z .'\-]+")
-_NAME_CHARS_RE = re.compile(r"^[一-龥々〆ヵヶぁ-んァ-ヴー・]+(?: [一-龥々〆ヵヶぁ-んァ-ヴー・]+)*$")
+_NAME_CHARS_RE = re.compile(
+    r"^[一-龥々〆ヵヶぁ-んァ-ヴー・]+(?: [一-龥々〆ヵヶぁ-んァ-ヴー・]+)*$"
+)
 _KANA_RE = re.compile(r"^[ァ-ヴー・\s]+$")
 _DIGIT_RE = re.compile(r"\d")
 _PHONE_CHARS_RE = re.compile(r"^[\d\-+()（）\s]+$")
+_PARENTHESIZED_RE = re.compile(r"^(.+?)\s*[(（]([^()（）]+)[)）]\s*$")
 
 # 連絡先の優先順位（先頭が is_primary になる）
 _CONTACT_PRIORITY = {
@@ -226,7 +231,16 @@ _CONTACT_PRIORITY = {
 
 _TEL_LABELS = ("TEL", "Tel", "tel", "電話", "PHONE", "Phone", "phone", "T:")
 _FAX_LABELS = ("FAX", "Fax", "fax", "ファックス", "F:")
-_MOBILE_LABELS = ("Mobile", "MOBILE", "mobile", "携帯", "携帯電話", "Cell", "CELL", "M:")
+_MOBILE_LABELS = (
+    "Mobile",
+    "MOBILE",
+    "mobile",
+    "携帯",
+    "携帯電話",
+    "Cell",
+    "CELL",
+    "M:",
+)
 _MAIL_LABELS = ("E-mail", "Email", "EMAIL", "Mail", "mail", "メール", "e-mail")
 _URL_LABELS = ("URL", "Url", "url", "HP", "Web", "WEB", "Website", "ホームページ")
 _ADDRESS_LABELS = ("住所", "所在地", "Address", "ADDRESS", "Add:")
@@ -285,6 +299,99 @@ def _phone_value(value: str) -> str | None:
     return None
 
 
+# 連絡先ラベルの一覧（同一行に複数並ぶ場合の分割に使う）
+_ALL_CONTACT_LABELS: tuple[str, ...] = (
+    _MAIL_LABELS + _URL_LABELS + _MOBILE_LABELS + _TEL_LABELS + _FAX_LABELS
+)
+_CONTACT_LABEL_RE = re.compile(
+    "|".join(
+        re.escape(label) for label in sorted(_ALL_CONTACT_LABELS, key=len, reverse=True)
+    )
+)
+_WRAPPED_LABEL_RE = re.compile(
+    r"^(.*?)\s*("
+    + "|".join(
+        re.escape(label)
+        for label in sorted(
+            _TEL_LABELS + _FAX_LABELS + _MOBILE_LABELS, key=len, reverse=True
+        )
+    )
+    + r")\s*$"
+)
+
+
+def _split_contact_segments(line: str) -> list[str]:
+    """1 行に複数の連絡先ラベルがある場合、ラベルごとに切り分ける。
+
+    ``TEL 03-1234-5678 FAX 03-1234-5679`` のように並んだ行だけを対象にし、
+    ラベルが 1 つ以下の行はそのまま返す。
+    """
+    matches = [
+        match
+        for match in _CONTACT_LABEL_RE.finditer(line)
+        if (match.start() == 0 or line[match.start() - 1] == " ")
+        and (
+            match.end() == len(line)
+            or line[match.end()] in " :：\t"
+            or line[match.end()].isdigit()
+        )
+    ]
+    if len(matches) < 2:
+        return [line]
+    segments = [
+        line[matches[index].start() : matches[index + 1].start()].strip()
+        for index in range(len(matches) - 1)
+    ]
+    segments.append(line[matches[-1].start() :].strip())
+    return [segment for segment in segments if segment]
+
+
+def _is_bare_phone(line: str) -> bool:
+    """行全体が電話番号だけか（ラベル無し）。"""
+    return bool(_PHONE_CHARS_RE.match(line)) and 10 <= len(_digits(line)) <= 11
+
+
+def _merge_wrapped_labels(lines: list[str]) -> list[str]:
+    """行末のラベルと次行の番号を結合する。
+
+    ``TEL 03-1111-2222 FAX`` の次行が ``03-3333-4444`` のとき、FAX の番号と
+    して結合する（ラベルだけの行でも同じ）。結合しないと種別が tel に
+    入れ替わってしまう。
+    """
+    merged: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        match = _WRAPPED_LABEL_RE.match(line)
+        if match and index + 1 < len(lines) and _is_bare_phone(lines[index + 1]):
+            merged.append(f"{line} {lines[index + 1]}")
+            index += 2
+            continue
+        merged.append(line)
+        index += 1
+    return merged
+
+
+def _labeled_contact(segment: str) -> tuple[str, str] | None:
+    """ラベル付きの電話・FAX の断片を (種別, 番号) にする。"""
+    for labels, ctype in (
+        (_MAIL_LABELS, "email"),
+        (_FAX_LABELS, "fax"),
+        (_MOBILE_LABELS, "mobile"),
+        (_TEL_LABELS, "tel"),
+    ):
+        value = _strip_label(segment, labels)
+        if ctype == "email":
+            if value and "@" in value:
+                match = _EMAIL_RE.search(value)
+                return ("email", match.group(0) if match else value)
+            continue
+        phone = _phone_value(value)
+        if phone:
+            return (ctype, phone)
+    return None
+
+
 def _looks_like_address(line: str) -> bool:
     if "〒" in line or _POSTAL_RE.search(line):
         return True
@@ -318,9 +425,7 @@ def _split_company_and_rest(line: str) -> tuple[str | None, str]:
     return None, line
 
 
-_DEPT_TOKEN_RE = re.compile(
-    r"[^\s]{1,12}?(?:" + "|".join(DEPARTMENT_SUFFIXES) + r")"
-)
+_DEPT_TOKEN_RE = re.compile(r"[^\s]{1,12}?(?:" + "|".join(DEPARTMENT_SUFFIXES) + r")")
 
 
 def _first_department_index(text: str) -> int:
@@ -335,8 +440,22 @@ def _first_department_index(text: str) -> int:
     return -1
 
 
+def _normalize_position(line: str) -> str:
+    """役職の表記ゆれ（語間の空白）を吸収する。
+
+    「代表取締役 社長」のように語が空白で分かれていても、連結した語が
+    役職辞書にあればその表記に揃える。辞書に無い語を連結して作らない
+    （「社長」を「代表取締役社長」に格上げする等の捏造をしない）。
+    """
+    compact = line.replace(" ", "").replace("　", "")
+    if compact != line and compact in POSITIONS:
+        return compact
+    return line
+
+
 def _split_department_position(line: str) -> tuple[str | None, str | None, str]:
     """「営業部 課長」のような行を部署・役職・残りに分ける。"""
+    line = _normalize_position(line)
     for position in POSITIONS:
         if not line.endswith(position):
             continue
@@ -366,7 +485,9 @@ def _split_department_position(line: str) -> tuple[str | None, str | None, str]:
 
 
 def _is_department(text: str) -> bool:
-    return any(text.endswith(suffix) for suffix in DEPARTMENT_SUFFIXES) and len(text) <= 20
+    return (
+        any(text.endswith(suffix) for suffix in DEPARTMENT_SUFFIXES) and len(text) <= 20
+    )
 
 
 def _split_person_name(line: str) -> tuple[str, str] | None:
@@ -405,6 +526,57 @@ def _split_person_name(line: str) -> tuple[str, str] | None:
     return None
 
 
+def _is_surname_only(line: str) -> bool:
+    """姓だけが 1 行に書かれているか（結合候補の 1 行目）。"""
+    if " " in line or _DIGIT_RE.search(line):
+        return False
+    if not _NAME_CHARS_RE.match(line) or _KANA_RE.match(line):
+        return False
+    translated = line.translate(_VARIANT_MAP)
+    return translated in _SURNAME_LOOKUP and 1 <= len(line) <= 4
+
+
+def _is_given_name_only(line: str) -> bool:
+    """名だけが 1 行に書かれているか（結合候補の 2 行目）。"""
+    if " " in line or _DIGIT_RE.search(line):
+        return False
+    if not _NAME_CHARS_RE.match(line) or _KANA_RE.match(line):
+        return False
+    if not (1 <= len(line) <= 4):
+        return False
+    if any(word in line for word in COMPANY_KEYWORDS):
+        return False
+    if _is_department(line) or _looks_like_address(line):
+        return False
+    _, position, _ = _split_department_position(line)
+    if position:
+        return False
+    return line.translate(_VARIANT_MAP) not in _SURNAME_LOOKUP
+
+
+def _join_split_names(lines: list[str]) -> list[str]:
+    """姓と名が別の行に割れている場合、隣接行を 1 人分として結合する。
+
+    辞書で姓と確認できる行の直後が、役職・部署・住所・フリガナでない
+    名らしい行のときだけ結合する（推測で人名を作らない）。
+    """
+    joined: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if (
+            index + 1 < len(lines)
+            and _is_surname_only(line)
+            and _is_given_name_only(lines[index + 1])
+        ):
+            joined.append(f"{line} {lines[index + 1]}")
+            index += 2
+            continue
+        joined.append(line)
+        index += 1
+    return joined
+
+
 def _social_type(host: str) -> str | None:
     for domain, ctype in _SOCIAL_HOSTS:
         if host.endswith(domain):
@@ -422,9 +594,7 @@ def _add_contact(
     contacts.append({"type": ctype, "value": value, "is_primary": False})
 
 
-def parse_card_text(
-    lines: list[str], raw_text: str | None = None
-) -> dict[str, Any]:
+def parse_card_text(lines: list[str], raw_text: str | None = None) -> dict[str, Any]:
     """OCR の行（読み順）から名刺の項目を作る。
 
     :param lines: NDLOCR-Lite が返した行テキスト（読み順）
@@ -435,6 +605,7 @@ def parse_card_text(
     if not cleaned and raw_text:
         cleaned = [_normalize(line) for line in raw_text.splitlines()]
         cleaned = [line for line in cleaned if line]
+    cleaned = _join_split_names(_merge_wrapped_labels(cleaned))
 
     contacts: list[dict[str, Any]] = []
     seen_contacts: set[str] = set()
@@ -455,6 +626,16 @@ def parse_card_text(
     address_seen = False
 
     for line in cleaned:
+        # --- TEL と FAX が 1 行に並ぶ場合の分割 ---
+        segments = _split_contact_segments(line)
+        if len(segments) > 1:
+            parsed = [_labeled_contact(segment) for segment in segments]
+            if all(contact is not None for contact in parsed):
+                for contact in parsed:
+                    assert contact is not None
+                    _add_contact(contacts, seen_contacts, contact[0], contact[1])
+                continue
+
         # --- 連絡先（ラベル付き） ---
         value = _strip_label(line, _MAIL_LABELS)
         if value and "@" in value:
@@ -491,9 +672,7 @@ def parse_card_text(
             url = url_match.group(0) if url_match else value
             host_match = re.search(r"([A-Za-z0-9\-]+\.)+[A-Za-z]{2,}", url)
             host = host_match.group(0).lower() if host_match else ""
-            _add_contact(
-                contacts, seen_contacts, _social_type(host) or "website", url
-            )
+            _add_contact(contacts, seen_contacts, _social_type(host) or "website", url)
             continue
 
         # --- ラベル無しの連絡先 ---
@@ -509,7 +688,9 @@ def parse_card_text(
             _add_contact(contacts, seen_contacts, ctype, phone)
             continue
 
-        if "://" in line or re.search(r"(www\.|[A-Za-z0-9\-]+\.(jp|com|net|org|io|dev|me|co))", line):
+        if "://" in line or re.search(
+            r"(www\.|[A-Za-z0-9\-]+\.(jp|com|net|org|io|dev|me|co))", line
+        ):
             url_match = _URL_RE.search(line)
             if url_match:
                 url = url_match.group(0)
@@ -571,6 +752,19 @@ def parse_card_text(
         if _KANA_RE.match(line):
             kana_candidates.append(line)
             continue
+        # 「山田 太郎(ヤマダ タロウ)」のように同一行にカナが括弧で並ぶ形
+        paren = _PARENTHESIZED_RE.match(line)
+        if paren:
+            base, reading = paren.group(1).strip(), paren.group(2).strip()
+            if (
+                _KANA_RE.match(reading)
+                and _NAME_CHARS_RE.match(base)
+                and not _DIGIT_RE.search(base)
+                and not any(word in base for word in COMPANY_KEYWORDS)
+            ):
+                name_candidates.append(base)
+                kana_candidates.append(reading)
+                continue
         if (
             _NAME_CHARS_RE.match(line)
             and not _DIGIT_RE.search(line)
