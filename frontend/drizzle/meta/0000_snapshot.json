@@ -1,5 +1,5 @@
 {
-  "id": "fda1f8a0-e2d9-4e7a-a59d-03da18652dd2",
+  "id": "7bbd3b5c-139a-4d01-ab7f-c9d2e6d0cfc1",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -11,7 +11,7 @@
         "id": {
           "name": "id",
           "type": "serial",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true
         },
         "name_card_id": {
@@ -41,8 +41,8 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "contact_methods_name_card_id_name_cards_id_fk": {
-          "name": "contact_methods_name_card_id_name_cards_id_fk",
+        "contact_methods_name_card_id_fkey": {
+          "name": "contact_methods_name_card_id_fkey",
           "tableFrom": "contact_methods",
           "tableTo": "name_cards",
           "columnsFrom": [
@@ -55,7 +55,14 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "contact_methods_pkey": {
+          "name": "contact_methods_pkey",
+          "columns": [
+            "id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -68,7 +75,7 @@
         "id": {
           "name": "id",
           "type": "serial",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true
         },
         "name_card_id": {
@@ -99,8 +106,8 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "name_card_images_name_card_id_name_cards_id_fk": {
-          "name": "name_card_images_name_card_id_name_cards_id_fk",
+        "name_card_images_name_card_id_fkey": {
+          "name": "name_card_images_name_card_id_fkey",
           "tableFrom": "name_card_images",
           "tableTo": "name_cards",
           "columnsFrom": [
@@ -113,7 +120,14 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "name_card_images_pkey": {
+          "name": "name_card_images_pkey",
+          "columns": [
+            "id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -138,8 +152,8 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "name_card_relationships_name_card_id_name_cards_id_fk": {
-          "name": "name_card_relationships_name_card_id_name_cards_id_fk",
+        "name_card_relationships_name_card_id_fkey": {
+          "name": "name_card_relationships_name_card_id_fkey",
           "tableFrom": "name_card_relationships",
           "tableTo": "name_cards",
           "columnsFrom": [
@@ -151,8 +165,8 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "name_card_relationships_relationship_id_relationships_id_fk": {
-          "name": "name_card_relationships_relationship_id_relationships_id_fk",
+        "name_card_relationships_relationship_id_fkey": {
+          "name": "name_card_relationships_relationship_id_fkey",
           "tableFrom": "name_card_relationships",
           "tableTo": "relationships",
           "columnsFrom": [
@@ -166,8 +180,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "name_card_relationships_name_card_id_relationship_id_pk": {
-          "name": "name_card_relationships_name_card_id_relationship_id_pk",
+        "name_card_relationships_pkey": {
+          "name": "name_card_relationships_pkey",
           "columns": [
             "name_card_id",
             "relationship_id"
@@ -198,8 +212,8 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "name_card_tags_name_card_id_name_cards_id_fk": {
-          "name": "name_card_tags_name_card_id_name_cards_id_fk",
+        "name_card_tags_name_card_id_fkey": {
+          "name": "name_card_tags_name_card_id_fkey",
           "tableFrom": "name_card_tags",
           "tableTo": "name_cards",
           "columnsFrom": [
@@ -211,8 +225,8 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "name_card_tags_tag_id_tags_id_fk": {
-          "name": "name_card_tags_tag_id_tags_id_fk",
+        "name_card_tags_tag_id_fkey": {
+          "name": "name_card_tags_tag_id_fkey",
           "tableFrom": "name_card_tags",
           "tableTo": "tags",
           "columnsFrom": [
@@ -226,8 +240,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "name_card_tags_name_card_id_tag_id_pk": {
-          "name": "name_card_tags_name_card_id_tag_id_pk",
+        "name_card_tags_pkey": {
+          "name": "name_card_tags_pkey",
           "columns": [
             "name_card_id",
             "tag_id"
@@ -246,7 +260,7 @@
         "id": {
           "name": "id",
           "type": "serial",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true
         },
         "user_id": {
@@ -279,24 +293,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "company_name": {
-          "name": "company_name",
-          "type": "varchar(200)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "department": {
-          "name": "department",
-          "type": "varchar(200)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "position": {
-          "name": "position",
-          "type": "varchar(200)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "met_notes": {
           "name": "met_notes",
           "type": "text",
@@ -322,12 +318,30 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "company_name": {
+          "name": "company_name",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "department": {
+          "name": "department",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "name_cards_user_id_users_id_fk": {
-          "name": "name_cards_user_id_users_id_fk",
+        "name_cards_user_id_fkey": {
+          "name": "name_cards_user_id_fkey",
           "tableFrom": "name_cards",
           "tableTo": "users",
           "columnsFrom": [
@@ -340,7 +354,14 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "name_cards_pkey": {
+          "name": "name_cards_pkey",
+          "columns": [
+            "id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -353,7 +374,7 @@
         "id": {
           "name": "id",
           "type": "serial",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true
         },
         "user_id": {
@@ -377,8 +398,8 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "relationships_user_id_users_id_fk": {
-          "name": "relationships_user_id_users_id_fk",
+        "relationships_user_id_fkey": {
+          "name": "relationships_user_id_fkey",
           "tableFrom": "relationships",
           "tableTo": "users",
           "columnsFrom": [
@@ -390,8 +411,8 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "relationships_parent_id_relationships_id_fk": {
-          "name": "relationships_parent_id_relationships_id_fk",
+        "relationships_parent_id_fkey": {
+          "name": "relationships_parent_id_fkey",
           "tableFrom": "relationships",
           "tableTo": "relationships",
           "columnsFrom": [
@@ -404,7 +425,14 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "relationships_pkey": {
+          "name": "relationships_pkey",
+          "columns": [
+            "id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -417,7 +445,7 @@
         "id": {
           "name": "id",
           "type": "serial",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true
         },
         "user_id": {
@@ -435,8 +463,8 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "tags_user_id_users_id_fk": {
-          "name": "tags_user_id_users_id_fk",
+        "tags_user_id_fkey": {
+          "name": "tags_user_id_fkey",
           "tableFrom": "tags",
           "tableTo": "users",
           "columnsFrom": [
@@ -449,7 +477,14 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "tags_pkey": {
+          "name": "tags_pkey",
+          "columns": [
+            "id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -462,7 +497,7 @@
         "id": {
           "name": "id",
           "type": "serial",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true
         },
         "email": {
@@ -494,10 +529,17 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "users_pkey": {
+          "name": "users_pkey",
+          "columns": [
+            "id"
+          ]
+        }
+      },
       "uniqueConstraints": {
-        "users_email_unique": {
-          "name": "users_email_unique",
+        "users_email_key": {
+          "name": "users_email_key",
           "nullsNotDistinct": false,
           "columns": [
             "email"

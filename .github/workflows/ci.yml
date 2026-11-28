@@ -90,6 +90,10 @@ jobs:
         working-directory: frontend
         run: pnpm exec tsc --noEmit
 
+      - name: Check DB constraint names
+        working-directory: frontend
+        run: pnpm db:check-names
+
       - name: Run tests
         working-directory: frontend
         run: pnpm exec vitest --run
