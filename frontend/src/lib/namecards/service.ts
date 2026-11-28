@@ -712,7 +712,9 @@ export async function addNameCardImage(
     .from(nameCardImages)
     .where(eq(nameCardImages.nameCardId, ncId));
   const nextPosition =
-    maxRows.length > 0 ? Math.max(...maxRows.map((row) => row.position)) + 1 : 0;
+    maxRows.length > 0
+      ? Math.max(...maxRows.map((row) => row.position)) + 1
+      : 0;
   const rows = await db
     .insert(nameCardImages)
     .values({ nameCardId: ncId, imagePath, position: nextPosition })
@@ -763,7 +765,10 @@ export async function deleteNameCardImage(
     const removed = await tx
       .delete(nameCardImages)
       .where(
-        and(eq(nameCardImages.id, imageId), eq(nameCardImages.nameCardId, ncId)),
+        and(
+          eq(nameCardImages.id, imageId),
+          eq(nameCardImages.nameCardId, ncId),
+        ),
       )
       .returning({ id: nameCardImages.id });
     if (!removed[0]) throw new ServiceError(404, "Image not found");
