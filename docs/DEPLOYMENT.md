@@ -131,7 +131,9 @@ server {
     listen 80;
     server_name name.nozyjp.com;
 
-    client_max_body_size 10M;   # 名刺画像のアップロードを考慮
+    # 注意: 現状の本番設定には client_max_body_size が無く、nginx 既定の 1M で
+    # 1MB 超のアップロードが 413 になる。Phase 6 で次を追加する（要承認）。
+    client_max_body_size 10M;   # 名刺画像のアップロード（アプリ側の上限と一致）
 
     # API → FastAPI（/api/v1 を含むパスをそのまま転送）
     location /api/ {
@@ -198,10 +200,18 @@ Next.js 単一アプリへの刷新（`docs/plans/nextjs-fullstack-rebuild.md`�
 | セッションCookieの日数 | — | `AUTH_SESSION_MAX_AGE_DAYS` | 既定 30 |
 | OCR 切替 | `OCR_PROVIDER=vertex` | `OCR_PROVIDER=vertex` | 同名で引き継ぐ |
 | Vertex 設定 | `VERTEX_PROJECT` / `VERTEX_LOCATION` / `VERTEX_MODEL` | 同じ | `gemini-3.1-flash-lite` |
+| 画像ディレクトリ | `IMAGE_DIR` | `IMAGE_DIR` | 既存の uploads を共用（webp/サムネイル）。アプリのアップロード上限は 10MB 固定。**現行 nginx は未指定＝既定 1M** のため、Phase 6 で `client_max_body_size 10M;` を追加する（要承認） |
 | Vertex 認証 | `GOOGLE_APPLICATION_CREDENTIALS`（`secrets/vertex-sa.json` を `:ro` マウント） | 同じ | 鍵はファイルのまま |
 | API ベース URL | `NEXT_PUBLIC_API_BASE_URL` | 不要 | 同一オリジンの `/api/v1` へ寄せる |
 | OCR サービス | `OCR_SERVICE_URL` | 使わない | Phase 7 で削除 |
 | 旧 OCR 経路 | `GEMINI_API_KEY` / `AWS_*` / `BEDROCK_MODEL_ID` | 引き継がない | 本番は Vertex に統一 |
+
+### Phase 6 切替チェックリスト（人の承認が必要）
+
+- [ ] nginx の `name_nozyjp` server ブロックに **`client_max_body_size 10M;` を追加**（現状は未指定＝1M）
+- [ ] `sudo nginx -t` → `sudo systemctl reload nginx`
+- [ ] `/api/` の転送先を新実装へ変更
+- [ ] 画像アップロード（1MB 超）が 413 にならないことを確認
 
 この間も `main` へのマージで `deploy.sh` が動く。`deploy/` の `webhook.py`・`install.sh`・systemd unit はデプロイ時に自動同期される（差分があるときだけ再起動）。`deploy.sh` 自身は実行中の書き換えを避けるため自動更新せず、差分は `deploy.log` の警告にだけ出る。`deploy.sh` を変えたときは `~/nameCardManager/deploy/install.sh` を1回手で実行する。
 
@@ -398,7 +408,7 @@ curl -sI https://name.nozyjp.com
 | アクセス制御 | Cloudflare 側で制御する（Tailscale 前提の閉域構成は廃止） |
 | CORS | `ALLOWED_ORIGINS` に公開オリジン（`https://name.nozyjp.com`）のみ許可 |
 | Swagger/ReDoc | `DEBUG=false` で無効化 |
-| アップロード | nginx `client_max_body_size 10M` |
+| アップロード | アプリは 10MB 固定。**現行 nginx は未指定＝既定 1M**（Phase 6 で `client_max_body_size 10M;` を追加。要承認） |
 | `.env.prod` | Git 追跡外 |
 | 個人情報 | 名刺は実在の個人情報。バックアップを外部サービスへ置かない |
 
@@ -503,7 +513,7 @@ docker compose exec backend env | grep OCR_
 ### 画像アップロードが失敗する
 
 ```bash
-sudo nginx -T | grep client_max_body_size      # 10M か
+sudo nginx -T | grep client_max_body_size      # 未指定なら nginx 既定の 1M（10M が必要）
 docker compose exec backend ls -la /app/uploads/images/
 docker volume ls | grep upload
 ```

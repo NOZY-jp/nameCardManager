@@ -639,3 +639,149 @@ export async function searchNameCards(userId: number, params: SearchParams) {
     total_pages: params.perPage > 0 ? Math.ceil(total / params.perPage) : 0,
   };
 }
+
+// ── 名刺画像（Phase 4） ─────────────────────────────
+
+export type NameCardImageRow = {
+  id: number;
+  imagePath: string;
+  position: number;
+  createdAt: Date;
+};
+
+function imageResponse(row: NameCardImageRow) {
+  return {
+    id: row.id,
+    image_path: row.imagePath,
+    position: row.position,
+    created_at: row.createdAt.toISOString(),
+  };
+}
+
+export async function listNameCardImages(userId: number, ncId: number) {
+  await assertOwned(userId, ncId);
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: nameCardImages.id,
+      imagePath: nameCardImages.imagePath,
+      position: nameCardImages.position,
+      createdAt: nameCardImages.createdAt,
+    })
+    .from(nameCardImages)
+    .where(eq(nameCardImages.nameCardId, ncId))
+    .orderBy(asc(nameCardImages.position));
+  return rows.map(imageResponse);
+}
+
+export async function findNameCardImage(
+  userId: number,
+  ncId: number,
+  imageId?: number,
+): Promise<NameCardImageRow | null> {
+  await assertOwned(userId, ncId);
+  const db = getDb();
+  const conditions = [eq(nameCardImages.nameCardId, ncId)];
+  if (imageId !== undefined) {
+    conditions.push(eq(nameCardImages.id, imageId));
+  } else {
+    conditions.push(eq(nameCardImages.position, 0));
+  }
+  const rows = await db
+    .select({
+      id: nameCardImages.id,
+      imagePath: nameCardImages.imagePath,
+      position: nameCardImages.position,
+      createdAt: nameCardImages.createdAt,
+    })
+    .from(nameCardImages)
+    .where(and(...conditions))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function addNameCardImage(
+  userId: number,
+  ncId: number,
+  imagePath: string,
+) {
+  await assertOwned(userId, ncId);
+  const db = getDb();
+  const maxRows = await db
+    .select({ position: nameCardImages.position })
+    .from(nameCardImages)
+    .where(eq(nameCardImages.nameCardId, ncId));
+  const nextPosition =
+    maxRows.length > 0
+      ? Math.max(...maxRows.map((row) => row.position)) + 1
+      : 0;
+  const rows = await db
+    .insert(nameCardImages)
+    .values({ nameCardId: ncId, imagePath, position: nextPosition })
+    .returning({
+      id: nameCardImages.id,
+      imagePath: nameCardImages.imagePath,
+      position: nameCardImages.position,
+      createdAt: nameCardImages.createdAt,
+    });
+  const row = rows[0];
+  if (!row) throw new Error("failed to add image");
+  return imageResponse(row);
+}
+
+export async function replaceNameCardImage(
+  userId: number,
+  ncId: number,
+  imageId: number,
+  imagePath: string,
+) {
+  await assertOwned(userId, ncId);
+  const db = getDb();
+  const rows = await db
+    .update(nameCardImages)
+    .set({ imagePath })
+    .where(
+      and(eq(nameCardImages.id, imageId), eq(nameCardImages.nameCardId, ncId)),
+    )
+    .returning({
+      id: nameCardImages.id,
+      imagePath: nameCardImages.imagePath,
+      position: nameCardImages.position,
+      createdAt: nameCardImages.createdAt,
+    });
+  const row = rows[0];
+  if (!row) throw new ServiceError(404, "Image not found");
+  return imageResponse(row);
+}
+
+export async function deleteNameCardImage(
+  userId: number,
+  ncId: number,
+  imageId: number,
+) {
+  await assertOwned(userId, ncId);
+  const db = getDb();
+  await db.transaction(async (tx) => {
+    const removed = await tx
+      .delete(nameCardImages)
+      .where(
+        and(
+          eq(nameCardImages.id, imageId),
+          eq(nameCardImages.nameCardId, ncId),
+        ),
+      )
+      .returning({ id: nameCardImages.id });
+    if (!removed[0]) throw new ServiceError(404, "Image not found");
+    const remaining = await tx
+      .select({ id: nameCardImages.id })
+      .from(nameCardImages)
+      .where(eq(nameCardImages.nameCardId, ncId))
+      .orderBy(asc(nameCardImages.position));
+    for (const [index, image] of remaining.entries()) {
+      await tx
+        .update(nameCardImages)
+        .set({ position: index })
+        .where(eq(nameCardImages.id, image.id));
+    }
+  });
+}
