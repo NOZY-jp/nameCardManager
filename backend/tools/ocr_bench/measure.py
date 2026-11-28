@@ -69,13 +69,25 @@ def build_provider(name: str) -> Any:
     return VertexBenchProvider()
 
 
+def anonymize(images: list[Path]) -> dict[str, str]:
+    """ファイル名（stem）を入力順の匿名 ID に置き換える。
+
+    出力に氏名などの識別子を含めないため、対応表は保存しない。
+    """
+    return {image.stem: f"card-{index:02d}" for index, image in enumerate(images, 1)}
+
+
 def run_once(
     provider: Any,
     images: list[Path],
     truth: dict[str, dict[str, Any]],
     save_text: Path | None,
+    labels: dict[str, str],
 ) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, float], dict[str, Any]]:
-    """1 回分の計測。集計・エラー・使用量・カード別指標を返す。"""
+    """1 回分の計測。集計・エラー・使用量・カード別指標を返す。
+
+    出力のキーは匿名 ID（``card-01`` など）だけを使う。
+    """
     cards: dict[str, Any] = {}
     errors: list[dict[str, Any]] = []
     transcribe_ms: list[float] = []
@@ -84,16 +96,17 @@ def run_once(
 
     for image in images:
         stem = image.stem
+        label = labels.get(stem, "card-??")
         expected = truth.get(stem)
         if expected is None:
-            errors.append({"stem": stem, "error": "truth_missing"})
+            errors.append({"card": label, "error": "truth_missing"})
             continue
         image_bytes = image.read_bytes()
         try:
             transcribed = provider.transcribe(image_bytes, stem=stem)
             structured = provider.structure(image_bytes, stem=stem)
         except Exception as exc:  # 1 枚の失敗で全体を止めない
-            errors.append({"stem": stem, "error": type(exc).__name__})
+            errors.append({"card": label, "error": type(exc).__name__})
             continue
 
         actual = ocr.normalize_result(structured.structured)
@@ -103,14 +116,14 @@ def run_once(
             str(expected.get("transcript") or ""),
             transcribed.transcript,
         )
-        cards[stem] = card
+        cards[label] = card
         transcribe_ms.append(transcribed.elapsed_ms)
         structure_ms.append(structured.elapsed_ms)
         tokens["input"] += transcribed.input_tokens + structured.input_tokens
         tokens["output"] += transcribed.output_tokens + structured.output_tokens
         if save_text is not None:
             save_text.mkdir(parents=True, exist_ok=True)
-            (save_text / f"{stem}.json").write_text(
+            (save_text / f"{label}.json").write_text(
                 json.dumps(
                     {
                         "transcript": transcribed.transcript,
@@ -165,6 +178,7 @@ def main(argv: list[str] | None = None) -> int:
         print("画像が見つかりません", file=sys.stderr)
         return 2
     truth = load_truth(args.truth)
+    labels = anonymize(images)
     provider = build_provider(args.provider)
 
     runs: list[dict[str, Any]] = []
@@ -172,12 +186,14 @@ def main(argv: list[str] | None = None) -> int:
     card_runs: list[dict[str, Any]] = []
     started_at = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     for index in range(args.runs):
-        total, errors, usage, cards = run_once(provider, images, truth, args.save_text)
+        total, errors, usage, cards = run_once(
+            provider, images, truth, args.save_text, labels
+        )
         all_errors.extend(errors)
         card_runs.append(cards)
         total["run"] = index + 1
         total["card_details"] = {
-            stem: {
+            label: {
                 "field_accuracy": card["field_accuracy"],
                 "cer": card["cer"],
                 "fabrication_count": card["fabrication_count"],
@@ -191,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
                     if not ok
                 ],
             }
-            for stem, card in cards.items()
+            for label, card in cards.items()
         }
         total["usage"] = {
             "input_tokens": int(usage["input_tokens"]),
@@ -221,7 +237,7 @@ def main(argv: list[str] | None = None) -> int:
             "cer": metrics.variance([run["cer"] for run in runs]),
         },
         "unstable_card_fields": metrics.unstable_fields(
-            card_runs, [image.stem for image in images]
+            card_runs, [labels[image.stem] for image in images]
         ),
         "cost": {
             "price_per_card_jpy_assumption": args.price_per_card_jpy,

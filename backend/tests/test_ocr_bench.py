@@ -163,7 +163,7 @@ def test_missing_truth_is_recorded_as_error(tmp_path: Path) -> None:
 
     assert code == 1
     result = json.loads(out.read_text(encoding="utf-8"))
-    assert result["errors"] == [{"stem": "unknown", "error": "truth_missing"}] * 2
+    assert result["errors"] == [{"card": "card-01", "error": "truth_missing"}] * 2
 
 
 def _dummy_inputs(tmp_path: Path) -> tuple[Path, Path]:
@@ -216,3 +216,42 @@ def test_variance_does_not_fake_zero_spread() -> None:
     pair = metrics.variance([0.5, 0.7])
     assert pair["samples"] == 2
     assert pair["stdev"] > 0
+
+
+def test_output_has_no_filename_identifiers(tmp_path: Path) -> None:
+    """ファイル名に氏名らしき文字列があっても、出力には現れない。"""
+    images = tmp_path / "images"
+    images.mkdir()
+    _make_png(images / "山田太郎_本物.png")
+    truth_path = tmp_path / "truth.json"
+    truth_path.write_text(
+        json.dumps({"山田太郎_本物": TRUTH}, ensure_ascii=False), encoding="utf-8"
+    )
+    out = tmp_path / "result.json"
+
+    measure.main(
+        [
+            "--images",
+            str(images),
+            "--truth",
+            str(truth_path),
+            "--out",
+            str(out),
+            "--provider",
+            "fake",
+            "--runs",
+            "2",
+        ]
+    )
+
+    text = out.read_text(encoding="utf-8")
+    assert "山田太郎_本物" not in text
+    assert "山田" not in text
+    result = json.loads(text)
+    assert list(result["runs"][0]["card_details"]) == ["card-01"]
+
+
+def test_variance_is_zero_for_two_identical_values() -> None:
+    same = metrics.variance([0.987, 0.987])
+    assert same["samples"] == 2
+    assert same["stdev"] == 0.0
