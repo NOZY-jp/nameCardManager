@@ -14,7 +14,7 @@ function intParam(value: string | null, fallback: number): number {
   return Number.isInteger(parsed) ? parsed : Number.NaN;
 }
 
-/** GET /api/v1/search（pg_bigm の =% 演算子で横断検索）。 */
+/** GET /api/v1/search（pg_trgm + lower() LIKE による部分一致の横断検索）。 */
 export async function GET(request: Request): Promise<NextResponse> {
   const user = await getCurrentUser(request);
   if (!user) return unauthorized();
